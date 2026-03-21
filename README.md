@@ -3,7 +3,7 @@
 
 ## Problem Statement
 
-India’s delivery partners are the hidden infrastructure behind food, grocery, and e-commerce convenience. But their income is fragile. A flood, heatwave, pollution spike, curfew, or app outage can instantly wipe out hours of work and a large share of weekly earnings. Unlike salaried workers, they have no buffer, no paid leave, and no protection when external disruptions stop them from working. The challenge is to build an AI-enabled parametric insurance platform that protects gig workers against loss of income from external disruptions, using a weekly pricing model and built-in fraud detection. Coverage must focus only on lost income, not health, accidents, or vehicle repairs. :contentReference[oaicite:1]{index=1}
+India’s delivery partners are the hidden infrastructure behind food, grocery, and e-commerce convenience. But their income is fragile. A flood, heatwave, pollution spike, curfew, or app outage can instantly wipe out hours of work and a large share of weekly earnings. Unlike salaried workers, they have no buffer, no paid leave, and no protection when external disruptions stop them from working. The challenge is to build an AI-enabled parametric insurance platform that protects gig workers against loss of income from external disruptions, using a weekly pricing model and built-in fraud detection. Coverage must focus only on lost income, not health, accidents, or vehicle repairs. 
 
 ---
 
@@ -112,8 +112,7 @@ The solution directly aligns with the challenge expectations:
 - includes **intelligent fraud detection**
 - supports **parametric automation**
 - can integrate with weather, traffic, platform, and payment systems
-- supports onboarding, policy creation, claims, payouts, and analytics thinking for future phases :contentReference[oaicite:2]{index=2}
-
+- supports onboarding, policy creation, claims, payouts, and analytics thinking for future phases 
 ---
 
 ## How the System Works
@@ -129,7 +128,7 @@ Collected inputs:
 - preferred weekly plan
 - payout destination (UPI / wallet)
 
-The onboarding is optimized because the brief expects persona-first design and a simple experience for delivery workers. :contentReference[oaicite:3]{index=3}
+The onboarding is optimized because the brief expects persona-first design and a simple experience for delivery workers. 
 
 ---
 
@@ -150,7 +149,7 @@ Output:
 - projected disruption exposure
 - payout cap recommendation
 
-This directly addresses the requirement for AI-powered risk assessment and predictive risk modeling. :contentReference[oaicite:4]{index=4}
+This directly addresses the requirement for AI-powered risk assessment and predictive risk modeling. 
 
 ---
 
@@ -158,7 +157,7 @@ This directly addresses the requirement for AI-powered risk assessment and predi
 The worker chooses or is recommended a weekly plan.
 
 Why weekly?
-Because gig workers earn and spend week-to-week, and the brief explicitly requires a weekly pricing model aligned to their earnings cycle. :contentReference[oaicite:5]{index=5}
+Because gig workers earn and spend week-to-week, and the brief explicitly requires a weekly pricing model aligned to their earnings cycle. 
 
 ### Sample Weekly Plans
 
@@ -190,7 +189,7 @@ The platform continuously watches disruption signals.
 - curfew / market closure announcement
 - sharp order collapse linked to verified platform disruption
 
-This matches the brief’s parametric automation requirement and the expectation to build trigger-driven claims logic. :contentReference[oaicite:6]{index=6}
+This matches the brief’s parametric automation requirement and the expectation to build trigger-driven claims logic. 
 
 ---
 
@@ -246,7 +245,7 @@ Instead of charging the same amount to everyone, we personalize weekly pricing b
 
 ## Parametric Triggers We Use
 
-The brief emphasizes that the insured item is **income lost due to external events**, not repair costs or personal injury. :contentReference[oaicite:7]{index=7}
+The brief emphasizes that the insured item is **income lost due to external events**, not repair costs or personal injury. 
 
 ### Our proposed trigger set
 
@@ -278,8 +277,7 @@ Use predicted risk to recommend the most appropriate weekly premium and coverage
 ### 3. Fraud Detection
 Detect suspicious claims, fake location behavior, abnormal activity, and coordinated fraud rings.
 
-This directly matches the brief’s requirement for premium calculation, fraud detection, and predictive risk modeling. :contentReference[oaicite:8]{index=8}
-
+This directly matches the brief’s requirement for premium calculation, fraud detection, and predictive risk modeling. 
 ---
 
 ## The Market Crash Problem: Our Adversarial Defense Strategy
@@ -394,7 +392,7 @@ A lightweight admin dashboard can exist on web for insurer-side monitoring.
 
 ## Admin and Worker Dashboards
 
-The brief mentions analytics dashboards as part of the expected solution thinking. :contentReference[oaicite:9]{index=9}
+The brief mentions analytics dashboards as part of the expected solution thinking. 
 
 ### Worker Dashboard
 - active weekly coverage
@@ -469,8 +467,7 @@ The brief mentions analytics dashboards as part of the expected solution thinkin
 - stronger predictive analytics
 - pitch deck and final demo
 
-This aligns closely with the staged progression described in the use case document. :contentReference[oaicite:10]{index=10}
-
+This aligns closely with the staged progression described in the use case document. 
 ---
 
 ## What Makes IncomeShield AI Competitive
