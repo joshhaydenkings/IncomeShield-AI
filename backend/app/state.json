@@ -1,0 +1,12 @@
+{
+  "current_worker": {
+    "name": "jo",
+    "city": "chennai",
+    "zone": "tambaram",
+    "shift": "6 PM - 11 PM",
+    "workerType": "Food Delivery",
+    "language": "en",
+    "plan": "Core"
+  },
+  "current_scenario": "rain"
+}
