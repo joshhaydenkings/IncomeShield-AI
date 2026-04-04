@@ -130,9 +130,9 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
 
             <Field label="Language">
               <OptionGrid
-                options={LANGUAGE_OPTIONS}
+                options={[...LANGUAGE_OPTIONS]}
                 value={form.language}
-                onChange={(value) => updateField("language", value)}
+                onChange={(value) => updateField("language", value as WorkerProfile["language"])}
                 columns={3}
               />
             </Field>

@@ -1,3 +1,4 @@
+export type Language = "en" | "hi" | "ta";
 export type Plan = "Lite" | "Core" | "Shield+";
 
 export type WorkerProfile = {
@@ -6,7 +7,7 @@ export type WorkerProfile = {
   zone: string;
   shift: string;
   workerType: string;
-  language: string;
+  language: Language;
   plan: Plan;
 };
 

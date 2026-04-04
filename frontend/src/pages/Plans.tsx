@@ -9,12 +9,11 @@ import type { Plan, WorkerProfile } from "../types";
 
 type PlansProps = {
   worker: WorkerProfile;
-  onBackToDashboard: () => void;
   onUpdatePlan: (plan: Plan) => void;
   simpleMode: boolean;
 };
 
-function Plans({ worker, onBackToDashboard, onUpdatePlan, simpleMode }: PlansProps) {
+function Plans({ worker, onUpdatePlan, simpleMode }: PlansProps) {
   const { speak } = useVoice(worker.language);
   const { plans, loading, error, currentScenario } = usePlans([
     worker.city,

@@ -50,6 +50,7 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
       worker,
       claim: currentClaim,
       planInfo: currentPlan,
+      payoutText: `₹${currentClaim.payout}`,
     });
   }, [simpleMode, worker, currentClaim, currentPlan]);
 

@@ -22,6 +22,8 @@ export type ClaimHistoryItem = {
   payoutChannel?: string | null;
   payoutTimestamp?: string | null;
   duplicateBlocked?: boolean;
+  manualTrigger?: boolean;
+  manualReason?: string | null;
   createdAt?: string;
 };
 
@@ -36,7 +38,7 @@ export function useClaimHistory(deps: unknown[] = []) {
         setLoading(true);
         setError("");
         const res = await apiFetch<{ items: ClaimHistoryItem[] }>("/claims/history");
-        setItems(res.items);
+        setItems(res.items ?? []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load claim history.");
       } finally {

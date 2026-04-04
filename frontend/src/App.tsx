@@ -13,7 +13,7 @@ import AppShell from "./layouts/AppShell";
 import { login, signup, getMe, updateProfile } from "./api/auth";
 import { apiFetch } from "./api/client";
 import { clearToken, getToken, setToken } from "./utils/auth";
-import type { Plan, WorkerProfile } from "./types";
+import type { Language, Plan, WorkerProfile } from "./types";
 import type { ScenarioKey } from "./services/mockData";
 import { getSimpleMode, setSimpleMode } from "./utils/simpleMode";
 
@@ -46,7 +46,7 @@ function mapUserToWorker(user: {
     zone: user.zone,
     shift: user.shift,
     workerType: user.workerType,
-    language: user.language,
+    language: user.language as Language,
     plan: user.plan as Plan,
   };
 }
@@ -308,7 +308,6 @@ function App() {
           worker={worker}
           scenario={scenario}
           onScenarioChange={handleScenarioChange}
-          onBack={handleReset}
           onGoToPlans={() => setPage("plans")}
           onGoToAdmin={() => setPage("admin")}
           simpleMode={simpleMode}
@@ -318,7 +317,6 @@ function App() {
       {page === "plans" && (
         <Plans
           worker={worker}
-          onBackToDashboard={() => setPage("dashboard")}
           onUpdatePlan={handleUpdatePlan}
           simpleMode={simpleMode}
         />

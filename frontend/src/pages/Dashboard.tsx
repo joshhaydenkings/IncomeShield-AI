@@ -31,7 +31,6 @@ type DashboardProps = {
   worker: WorkerProfile;
   scenario: ScenarioKey;
   onScenarioChange: (scenario: ScenarioKey) => void;
-  onBack: () => void;
   onGoToPlans: () => void;
   onGoToAdmin: () => void;
   simpleMode: boolean;
@@ -40,7 +39,6 @@ type DashboardProps = {
 function Dashboard({
   worker,
   scenario,
-  onBack,
   onGoToPlans,
   onGoToAdmin,
   simpleMode,
@@ -54,7 +52,7 @@ function Dashboard({
 
   const statusLabel = useMemo(() => {
     if (!claim) return "";
-    return getEarnabilityLabel(worker.language, claim.score);
+    return getEarnabilityLabel(claim.score);
   }, [claim, worker.language]);
 
   const statusTone = useMemo(() => {
@@ -73,7 +71,12 @@ function Dashboard({
 
   const payoutText = useMemo(() => {
     if (!claim) return "";
-    return getPayoutStatusText(worker.language, claim.payoutStatus);
+   return getPayoutStatusText(
+  worker.language,
+  (["none", "checking", "approved", "review"].includes(claim.payoutStatus)
+    ? claim.payoutStatus
+    : "none") as "none" | "checking" | "approved" | "review",
+);
   }, [claim, worker.language]);
 
   const payoutTone = useMemo(() => {

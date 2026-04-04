@@ -52,7 +52,8 @@ function Alerts({
   }
 
   const { claim } = claimData;
-  const statusLabel = getEarnabilityLabel(worker.language, claim.score);
+  const statusLabel = getEarnabilityLabel(claim.score);
+
 
   const statusColor =
     claim.score >= 70
