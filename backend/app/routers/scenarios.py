@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from ..deps import get_current_user
 from ..repositories.activity_repository import add_activity
@@ -8,12 +9,26 @@ from ..repositories.user_state_repository import (
     get_current_scenario_for_user,
     set_current_scenario_for_user,
 )
-from ..schemas import UpdateScenarioRequest
 from ..services.claim_service import build_claim
 from ..services.live_conditions_service import get_live_condition_result
-from ..services.plan_service import get_available_plans, get_plan_by_name
+from ..services.plan_service import get_plan_by_name
 
 router = APIRouter()
+
+
+class ScenarioUpdateRequest(BaseModel):
+    scenario: str
+
+
+def get_available_scenarios():
+    return [
+        {"key": "normal", "label": "Normal"},
+        {"key": "rain", "label": "Heavy rain"},
+        {"key": "flood", "label": "Flood"},
+        {"key": "aqi", "label": "Poor air quality"},
+        {"key": "outage", "label": "Platform outage"},
+        {"key": "gps_spoof", "label": "GPS mismatch"},
+    ]
 
 
 @router.get("/scenarios")
@@ -21,19 +36,23 @@ def get_scenarios(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
     return {
         "currentScenario": get_current_scenario_for_user(user_id),
-        "availableScenarios": get_available_plans(worker=current_user, scenario=get_current_scenario_for_user(user_id)),
+        "availableScenarios": get_available_scenarios(),
     }
 
 
 @router.put("/scenarios/current")
 def update_current_scenario(
-    payload: UpdateScenarioRequest,
+    payload: ScenarioUpdateRequest,
     current_user: dict = Depends(get_current_user),
 ):
     user_id = str(current_user["_id"])
     set_current_scenario_for_user(user_id, payload.scenario)
 
-    plan_info = get_plan_by_name(current_user.get("plan", "Core"), worker=current_user, scenario=payload.scenario)
+    plan_info = get_plan_by_name(
+        current_user.get("plan", "Core"),
+        worker=current_user,
+        scenario=payload.scenario,
+    )
     create_or_update_policy_for_user(user_id, plan_info)
 
     add_activity("Conditions updated", payload.scenario, user_id)
@@ -51,8 +70,10 @@ def update_current_scenario(
 
     return {
         "message": "Scenario updated successfully",
+        "scenario": payload.scenario,
         "currentScenario": payload.scenario,
         "duplicateBlocked": duplicate_blocked,
+        "availableScenarios": get_available_scenarios(),
     }
 
 
@@ -70,7 +91,11 @@ def update_scenario_from_live_data(current_user: dict = Depends(get_current_user
     live_scenario = result["mappedScenario"]
     set_current_scenario_for_user(user_id, live_scenario)
 
-    plan_info = get_plan_by_name(current_user.get("plan", "Core"), worker=current_user, scenario=live_scenario)
+    plan_info = get_plan_by_name(
+        current_user.get("plan", "Core"),
+        worker=current_user,
+        scenario=live_scenario,
+    )
     create_or_update_policy_for_user(user_id, plan_info)
 
     add_activity(
@@ -92,10 +117,12 @@ def update_scenario_from_live_data(current_user: dict = Depends(get_current_user
 
     return {
         "message": "Scenario updated from live public data",
+        "scenario": live_scenario,
         "currentScenario": live_scenario,
         "reason": result["reason"],
         "queryUsed": result["queryUsed"],
         "location": result["location"],
         "liveData": result["liveData"],
         "duplicateBlocked": duplicate_blocked,
+        "availableScenarios": get_available_scenarios(),
     }

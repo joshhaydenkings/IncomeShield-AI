@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "../api/client";
-import type { ScenarioKey } from "../services/mockData";
-
-type ScenarioOption = {
-  key: ScenarioKey;
-  label: string;
-};
+import { getScenarioOptions, type ScenarioOption } from "../api/scenarios";
 
 export function useScenarioOptions(deps: unknown[] = []) {
   const [options, setOptions] = useState<ScenarioOption[]>([]);
+  const [currentScenario, setCurrentScenario] = useState<string>("normal");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -17,10 +12,9 @@ export function useScenarioOptions(deps: unknown[] = []) {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<{
-          availableScenarios?: ScenarioOption[];
-        }>("/scenarios");
+        const res = await getScenarioOptions();
         setOptions(res.availableScenarios ?? []);
+        setCurrentScenario(res.currentScenario ?? "normal");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load scenarios.");
       } finally {
@@ -31,5 +25,5 @@ export function useScenarioOptions(deps: unknown[] = []) {
     load();
   }, deps);
 
-  return { options, loading, error };
+  return { options, currentScenario, loading, error };
 }
