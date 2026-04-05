@@ -17,10 +17,6 @@ from .routers.worker import router as worker_router
 
 app = FastAPI(title="IncomeShield AI Backend", version="0.1.0")
 
-# For hackathon/demo deployment:
-# JWT is sent in Authorization headers, not cookies,
-# so allow_credentials is not required.
-# This avoids Render/Vercel origin mismatch issues.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
