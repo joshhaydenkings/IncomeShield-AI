@@ -15,6 +15,7 @@ class LoginRequest(BaseModel):
 class ProfileSetupRequest(BaseModel):
     city: str
     zone: str
+    pincode: str | None = ""
     shift: str
     workerType: str
     language: str

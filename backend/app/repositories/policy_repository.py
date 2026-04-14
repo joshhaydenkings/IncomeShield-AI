@@ -43,6 +43,7 @@ def create_or_update_policy_for_user(user_id: str, plan_info: dict):
         )
         return get_policy_for_user(user_id)
 
+    now = _now_iso()
     doc = {
         "userId": user_id,
         "policyNumber": _policy_number(),
@@ -54,10 +55,10 @@ def create_or_update_policy_for_user(user_id: str, plan_info: dict):
         "badge": plan_info.get("badge", ""),
         "pricingMode": plan_info.get("pricingMode", "rules"),
         "pricingReasons": plan_info.get("pricingReasons", []),
-        "effectiveDate": _now_iso(),
+        "effectiveDate": now,
         "renewalDate": _renewal_iso(7),
-        "createdAt": _now_iso(),
-        "updatedAt": _now_iso(),
+        "createdAt": now,
+        "updatedAt": now,
     }
     policy_collection.insert_one(doc)
     return get_policy_for_user(user_id)

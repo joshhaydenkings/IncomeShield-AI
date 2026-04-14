@@ -1,12 +1,25 @@
 {
   "current_worker": {
-    "name": "jo",
-    "city": "chennai",
-    "zone": "tambaram",
-    "shift": "6 PM - 11 PM",
-    "workerType": "Food Delivery",
+    "id": "69ddc1ae6eaf4ec0338ab666",
+    "name": "Kingseley",
+    "email": "kingseley@example.com",
+    "city": "Mumbai",
+    "zone": "Andheri",
+    "pincode": "400053",
+    "normalized_location": "Andheri, Mumbai",
+    "resolved_name": "Mumbai",
+    "resolved_admin1": "Maharashtra",
+    "resolved_country": "India",
+    "latitude": 19.07283,
+    "longitude": 72.88261,
+    "timezone": "Asia/Kolkata",
+    "shift": "",
+    "workerType": "",
     "language": "en",
-    "plan": "Core"
+    "plan": "Core",
+    "profileCompleted": false,
+    "createdAt": "2026-04-14T04:25:18.754070+00:00",
+    "updatedAt": "2026-04-14T04:36:39.193873+00:00"
   },
   "current_scenario": "rain"
 }

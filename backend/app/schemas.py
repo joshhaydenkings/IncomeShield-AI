@@ -23,3 +23,8 @@ class UpdatePlanRequest(BaseModel):
 
 class UpdateScenarioRequest(BaseModel):
     scenario: ScenarioKey
+
+class UpdateLocationRequest(BaseModel):
+    city: str
+    zone: str | None = ""
+    pincode: str | None = ""

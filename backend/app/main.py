@@ -1,5 +1,3 @@
-import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,20 +12,30 @@ from .routers.policy import router as policy_router
 from .routers.reset import router as reset_router
 from .routers.scenarios import router as scenarios_router
 from .routers.worker import router as worker_router
+from .services.scheduler_service import shutdown_scheduler, start_scheduler
 
 app = FastAPI(title="IncomeShield AI Backend", version="0.1.0")
 
+# Demo/hackathon-safe CORS:
+# JWT is sent in Authorization headers, not cookies.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://income-shield-jwyhdkxdy-joshuvahayden138-8145s-projects.vercel.app",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def on_startup():
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    shutdown_scheduler()
+
 
 app.include_router(health_router)
 app.include_router(auth_router)

@@ -10,11 +10,12 @@ def get_or_create_user_state(user_id: str):
     if existing:
         return existing
 
+    now = datetime.now(timezone.utc).isoformat()
     doc = {
         "userId": user_id,
-        "currentScenario": "flood",
-        "createdAt": datetime.now(timezone.utc).isoformat(),
-        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "currentScenario": "normal",
+        "createdAt": now,
+        "updatedAt": now,
     }
     user_state_collection.insert_one(doc)
     return doc
@@ -22,7 +23,7 @@ def get_or_create_user_state(user_id: str):
 
 def get_current_scenario_for_user(user_id: str) -> str:
     state = get_or_create_user_state(user_id)
-    return state.get("currentScenario", "flood")
+    return state.get("currentScenario", "normal")
 
 
 def set_current_scenario_for_user(user_id: str, scenario: str):

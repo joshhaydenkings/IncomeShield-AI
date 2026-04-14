@@ -13,12 +13,23 @@ BASE_PREMIUMS = {
 
 MODEL_PATH = Path(__file__).resolve().parent.parent / "ml" / "models" / "pricing_model.joblib"
 _pricing_model = None
+_model_load_failed = False
 
 
 def _load_model():
-    global _pricing_model
+    global _pricing_model, _model_load_failed
+
+    if _model_load_failed:
+        return None
+
     if _pricing_model is None and MODEL_PATH.exists():
-        _pricing_model = joblib.load(MODEL_PATH)
+        try:
+            _pricing_model = joblib.load(MODEL_PATH)
+        except Exception as exc:
+            print(f"[pricing_service] Failed to load pricing model, using fallback rules: {exc}")
+            _model_load_failed = True
+            _pricing_model = None
+
     return _pricing_model
 
 
@@ -173,46 +184,49 @@ def calculate_dynamic_premium(
     if worker:
         model = _load_model()
         if model is not None:
-            row = pd.DataFrame(
-                [
-                    {
-                        "city": worker.get("city", ""),
-                        "zone": worker.get("zone", ""),
-                        "shift": worker.get("shift", ""),
-                        "workerType": worker.get("workerType", ""),
-                        "plan": plan_name,
-                        "scenario": scenario,
-                    }
+            try:
+                row = pd.DataFrame(
+                    [
+                        {
+                            "city": worker.get("city", ""),
+                            "zone": worker.get("zone", ""),
+                            "shift": worker.get("shift", ""),
+                            "workerType": worker.get("workerType", ""),
+                            "plan": plan_name,
+                            "scenario": scenario,
+                        }
+                    ]
+                )
+
+                predicted = float(model.predict(row)[0])
+                premium = round(predicted)
+
+                hybrid_delta, hybrid_reasons = _hybrid_adjustments(worker, scenario)
+                premium += hybrid_delta
+                premium = _clamp(plan_name, premium)
+
+                reasons = [
+                    "ML pricing model estimated the base weekly premium.",
+                    f"Plan base price: ₹{base_premium}",
+                    f"ML inputs used: city, zone, shift, work type, plan, and scenario ({scenario}).",
+                    f"Raw ML premium prediction: ₹{round(predicted)}",
+                    *hybrid_reasons,
                 ]
-            )
 
-            predicted = float(model.predict(row)[0])
-            premium = round(predicted)
+                if premium > base_premium:
+                    reasons.append(f"Final premium is above base by ₹{premium - base_premium}.")
+                elif premium < base_premium:
+                    reasons.append(f"Final premium is below base by ₹{base_premium - premium}.")
+                else:
+                    reasons.append("Final premium matches the base price.")
 
-            hybrid_delta, hybrid_reasons = _hybrid_adjustments(worker, scenario)
-            premium += hybrid_delta
-            premium = _clamp(plan_name, premium)
-
-            reasons = [
-                "ML pricing model estimated the base weekly premium.",
-                f"Plan base price: ₹{base_premium}",
-                f"ML inputs used: city, zone, shift, work type, plan, and scenario ({scenario}).",
-                f"Raw ML premium prediction: ₹{round(predicted)}",
-                *hybrid_reasons,
-            ]
-
-            if premium > base_premium:
-                reasons.append(f"Final premium is above base by ₹{premium - base_premium}.")
-            elif premium < base_premium:
-                reasons.append(f"Final premium is below base by ₹{base_premium - premium}.")
-            else:
-                reasons.append("Final premium matches the base price.")
-
-            return {
-                "basePremium": base_premium,
-                "premium": premium,
-                "pricingReasons": reasons,
-                "pricingMode": "ml-hybrid",
-            }
+                return {
+                    "basePremium": base_premium,
+                    "premium": premium,
+                    "pricingReasons": reasons,
+                    "pricingMode": "ml-hybrid",
+                }
+            except Exception as exc:
+                print(f"[pricing_service] Prediction failed, using fallback rules: {exc}")
 
     return _rule_based_premium(plan_name, worker, scenario)

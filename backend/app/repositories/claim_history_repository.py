@@ -36,33 +36,34 @@ def find_recent_duplicate_claim(user_id: str, scenario: str, minutes: int = 30):
 def add_claim_history(*, user_id: str, scenario: str, claim: dict, plan_info: dict):
     duplicate = find_recent_duplicate_claim(user_id, scenario)
     if duplicate:
-      return duplicate, True
+        return duplicate, True
 
+    now = _now_iso()
     payout_status = claim.get("payoutStatus", "none")
     payout_reference = _receipt_ref() if payout_status in {"approved", "paid"} else None
     payout_channel = "UPI" if payout_status in {"approved", "paid"} else None
-    payout_timestamp = _now_iso() if payout_status == "paid" else None
+    payout_timestamp = now if payout_status == "paid" else None
 
     stages = [
         {
             "label": "Submitted",
             "status": "done",
-            "time": _now_iso(),
+            "time": now,
         },
         {
             "label": "Checking",
             "status": "done" if payout_status in {"checking", "approved", "review", "paid"} else "pending",
-            "time": _now_iso() if payout_status in {"checking", "approved", "review", "paid"} else None,
+            "time": now if payout_status in {"checking", "approved", "review", "paid"} else None,
         },
         {
             "label": "Manual Review",
             "status": "done" if payout_status == "review" else "skipped",
-            "time": _now_iso() if payout_status == "review" else None,
+            "time": now if payout_status == "review" else None,
         },
         {
             "label": "Approved",
             "status": "done" if payout_status in {"approved", "paid"} else "pending",
-            "time": _now_iso() if payout_status in {"approved", "paid"} else None,
+            "time": now if payout_status in {"approved", "paid"} else None,
         },
         {
             "label": "Paid",
@@ -85,8 +86,8 @@ def add_claim_history(*, user_id: str, scenario: str, claim: dict, plan_info: di
         "payoutReference": payout_reference,
         "payoutChannel": payout_channel,
         "payoutTimestamp": payout_timestamp,
-        "createdAt": _now_iso(),
-        "updatedAt": _now_iso(),
+        "createdAt": now,
+        "updatedAt": now,
     }
     claim_history_collection.insert_one(doc)
     return doc, False
@@ -103,6 +104,7 @@ def add_manual_claim_history(
     if duplicate:
         return duplicate, True
 
+    now = _now_iso()
     doc = {
         "userId": user_id,
         "scenario": scenario,
@@ -129,9 +131,9 @@ def add_manual_claim_history(
         "claimNumber": _claim_number(),
         "lifecycleStatus": "review",
         "timeline": [
-            {"label": "Submitted", "status": "done", "time": _now_iso()},
-            {"label": "Checking", "status": "done", "time": _now_iso()},
-            {"label": "Manual Review", "status": "done", "time": _now_iso()},
+            {"label": "Submitted", "status": "done", "time": now},
+            {"label": "Checking", "status": "done", "time": now},
+            {"label": "Manual Review", "status": "done", "time": now},
             {"label": "Approved", "status": "pending", "time": None},
             {"label": "Paid", "status": "pending", "time": None},
         ],
@@ -141,8 +143,8 @@ def add_manual_claim_history(
         "payoutReference": None,
         "payoutChannel": None,
         "payoutTimestamp": None,
-        "createdAt": _now_iso(),
-        "updatedAt": _now_iso(),
+        "createdAt": now,
+        "updatedAt": now,
     }
     claim_history_collection.insert_one(doc)
     return doc, False

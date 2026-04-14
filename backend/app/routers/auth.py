@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..auth import create_access_token, hash_password, verify_password
 from ..deps import get_current_user
+
 from ..repositories.user_repository import (
     create_user,
     get_user_by_email,
