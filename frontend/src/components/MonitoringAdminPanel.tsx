@@ -67,7 +67,7 @@ export default function MonitoringAdminPanel() {
   const [fraudLoading, setFraudLoading] = useState(false);
   const [fraudError, setFraudError] = useState<string | null>(null);
 
-  const { items: claimHistory, loading: claimsLoading } = useClaimHistory([]);
+  const { items: claimHistory } = useClaimHistory([]);
   const { data: currentClaimData } = useClaimData([]);
 
   async function loadStatus() {

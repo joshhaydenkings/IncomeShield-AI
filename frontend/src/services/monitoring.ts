@@ -7,18 +7,35 @@ export type MonitoringEvent = {
   reason: string;
   estimated_payout: number;
   detected_at: string;
+  source?: string;
+};
+
+export type MonitoringScanSummary = {
+  scan_timestamp?: string;
+  zones_checked?: number;
+  zones_with_errors?: number;
+  events_detected?: number;
+  event_types?: string[];
+  data_source?: string;
+};
+
+export type MonitoringScanRecord = {
+  scan_timestamp: string;
+  summary: MonitoringScanSummary;
+  events: MonitoringEvent[];
+  signals: unknown[];
+  errors: Array<{
+    zone: string;
+    error: string;
+  }>;
 };
 
 export type MonitoringStatus = {
   last_scan_at: string | null;
   run_count: number;
-  last_summary: {
-    scan_timestamp?: string;
-    zones_checked?: number;
-    events_detected?: number;
-    event_types?: string[];
-  };
+  last_summary: MonitoringScanSummary;
   recent_events: MonitoringEvent[];
+  scan_history: MonitoringScanRecord[];
 };
 
 export type FraudScoreRequest = {
