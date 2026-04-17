@@ -31,6 +31,8 @@ function Onboarding({ onContinue }: OnboardingProps) {
     }[]
   >([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     const loadPlans = async () => {
@@ -71,9 +73,27 @@ function Onboarding({ onContinue }: OnboardingProps) {
     return selectedPlan.premium + cityRisk + workerRisk;
   }, [form, plans]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onContinue(form);
+
+    try {
+      setSubmitting(true);
+      setSubmitError("");
+      await onContinue({
+        ...form,
+        name: form.name.trim(),
+        city: form.city.trim(),
+        zone: form.zone.trim(),
+      });
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not continue. Please check your city and zone.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (loadingPlans) {
@@ -110,6 +130,12 @@ function Onboarding({ onContinue }: OnboardingProps) {
             <p className="mt-2 text-slate-400">
               Enter the details used for your work setup.
             </p>
+
+            {submitError ? (
+              <div className="mt-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-rose-300">
+                {submitError}
+              </div>
+            ) : null}
 
             <div className="mt-8 grid gap-5 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -280,9 +306,10 @@ function Onboarding({ onContinue }: OnboardingProps) {
 
             <button
               type="submit"
+              disabled={submitting}
               className="mt-8 w-full rounded-2xl bg-white px-5 py-4 text-lg font-semibold text-[#07111f] transition hover:bg-slate-200"
             >
-              Continue
+              {submitting ? "Continuing..." : "Continue"}
             </button>
           </form>
 
