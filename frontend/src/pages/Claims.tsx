@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
-import { ShieldCheck, Wallet, AlertTriangle, Sparkles } from "lucide-react";
+import {
+  ShieldCheck,
+  Wallet,
+  AlertTriangle,
+  Sparkles,
+  Brain,
+  ShieldAlert,
+  Cpu,
+  Bot,
+} from "lucide-react";
 import { useClaimData } from "../hooks/useClaimData";
 import { useClaimHistory } from "../hooks/useClaimHistory";
-import { submitManualClaim } from "../api/claims";
+import { releasePayout, submitManualClaim } from "../api/claims";
 import { tr } from "../services/translations";
 import { useVoice } from "../hooks/useVoice";
 import { buildClaimsVoice } from "../utils/pageVoice";
@@ -19,18 +28,36 @@ type ClaimsProps = {
 
 function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
   const { speak } = useVoice(worker.language);
-  const { data, loading, error } = useClaimData([scenario]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const { data, loading, error } = useClaimData([scenario, refreshKey]);
   const {
     items: history,
     loading: historyLoading,
     error: historyError,
-  } = useClaimHistory([scenario]);
+  } = useClaimHistory([scenario, refreshKey]);
+
   const [manualReason, setManualReason] = useState("");
   const [manualLoading, setManualLoading] = useState(false);
   const [manualMessage, setManualMessage] = useState("");
+  const [payoutLoading, setPayoutLoading] = useState(false);
 
   const currentClaim = data?.claim;
   const currentPlan = data?.planInfo;
+
+  const aiInsight = currentClaim?.aiInsight as
+    | {
+        predictedRisk?: string;
+        predictedFraud?: boolean;
+        inputSummary?: string;
+        modelSource?: string;
+        trainedAt?: string;
+        riskModelSource?: string;
+        riskTrainedAt?: string;
+        fraudModelSource?: string;
+        fraudTrainedAt?: string;
+      }
+    | undefined;
 
   const fraudTone = currentClaim?.fraudFlag ? "danger" : "good";
 
@@ -41,7 +68,27 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
         ? "warn"
         : currentClaim?.payoutStatus === "review"
           ? "danger"
-          : "default";
+          : currentClaim?.payoutStatus === "paid"
+            ? "good"
+            : "default";
+
+  const riskTone =
+    currentClaim?.risk === "high"
+      ? "danger"
+      : currentClaim?.risk === "medium"
+        ? "warn"
+        : "good";
+
+  const modelActive =
+    aiInsight?.riskModelSource === "trained_model" ||
+    aiInsight?.fraudModelSource === "trained_model" ||
+    aiInsight?.modelSource === "trained_model";
+
+  const latestHistoryItem = history[0];
+  const canReleasePayout =
+    !!latestHistoryItem &&
+    (latestHistoryItem.lifecycleStatus === "approved" ||
+      latestHistoryItem.payoutStatus === "approved");
 
   const voiceText = useMemo(() => {
     if (!currentClaim || !currentPlan) return "";
@@ -53,6 +100,10 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
       payoutText: `₹${currentClaim.payout}`,
     });
   }, [simpleMode, worker, currentClaim, currentPlan]);
+
+  const refreshPageData = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   const handleManualClaim = async () => {
     if (!manualReason.trim()) {
@@ -66,12 +117,28 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
       setManualMessage(res.message);
       if (!res.duplicateBlocked) {
         setManualReason("");
-        window.location.reload();
+        refreshPageData();
       }
     } catch (err) {
       setManualMessage(err instanceof Error ? err.message : "Failed to submit manual claim.");
     } finally {
       setManualLoading(false);
+    }
+  };
+
+  const handleReleasePayout = async () => {
+    try {
+      setPayoutLoading(true);
+      setManualMessage("");
+      const res = await releasePayout(latestHistoryItem?.id);
+      setManualMessage(
+        `${res.message} Reference: ${res.payoutReference || "Generated"}`
+      );
+      refreshPageData();
+    } catch (err) {
+      setManualMessage(err instanceof Error ? err.message : "Failed to release payout.");
+    } finally {
+      setPayoutLoading(false);
     }
   };
 
@@ -137,21 +204,64 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
             </div>
 
             <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
-              <div className="mb-5 flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-emerald-300" />
-                <h2 className="text-2xl font-semibold text-white">AI insight</h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-emerald-300" />
+                  <h2 className="text-2xl font-semibold text-white">
+                    {simpleMode ? "AI details" : "AI decision details"}
+                  </h2>
+                </div>
+                <StatusPill
+                  label={modelActive ? "Model active" : "Fallback safe mode"}
+                  tone={modelActive ? "good" : "warn"}
+                />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <InsightCard
-                  label="AI risk prediction"
-                  value={currentClaim.aiInsight?.predictedRisk || currentClaim.risk}
-                  tone={currentClaim.risk === "high" ? "danger" : currentClaim.risk === "medium" ? "warn" : "good"}
+                  label="Risk model"
+                  value={
+                    aiInsight?.riskModelSource === "trained_model" ||
+                    aiInsight?.modelSource === "trained_model"
+                      ? "Trained model"
+                      : "Fallback rules"
+                  }
+                  tone={modelActive ? "good" : "warn"}
+                  icon={<Brain className="h-5 w-5" />}
                 />
                 <InsightCard
-                  label="AI fraud review flag"
+                  label="Risk prediction"
+                  value={currentClaim.aiInsight?.predictedRisk || currentClaim.risk}
+                  tone={riskTone}
+                  icon={<Cpu className="h-5 w-5" />}
+                />
+                <InsightCard
+                  label="Risk score"
+                  value={`${currentClaim.score}/100`}
+                  tone={riskTone}
+                  icon={<Cpu className="h-5 w-5" />}
+                />
+                <InsightCard
+                  label="Fraud model"
+                  value={
+                    aiInsight?.fraudModelSource === "trained_model"
+                      ? "Trained model"
+                      : "Fallback rules"
+                  }
+                  tone={modelActive ? "good" : "warn"}
+                  icon={<Bot className="h-5 w-5" />}
+                />
+                <InsightCard
+                  label="Fraud review flag"
                   value={currentClaim.aiInsight?.predictedFraud ? "Yes" : "No"}
                   tone={currentClaim.aiInsight?.predictedFraud ? "danger" : "good"}
+                  icon={<ShieldAlert className="h-5 w-5" />}
+                />
+                <InsightCard
+                  label="Decision path"
+                  value={currentClaim.fraudFlag ? "Manual review" : "Auto process"}
+                  tone={currentClaim.fraudFlag ? "danger" : "good"}
+                  icon={<ShieldAlert className="h-5 w-5" />}
                 />
               </div>
 
@@ -159,6 +269,52 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
                 <div className="text-sm text-slate-400">Model input summary</div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {currentClaim.aiInsight?.inputSummary || "No input summary"}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="text-sm text-slate-400">Risk model status</div>
+                  <div className="mt-2 text-white">
+                    {aiInsight?.riskModelSource === "trained_model"
+                      ? "Using trained risk model for live claim scoring."
+                      : "Using safe fallback risk logic."}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="text-sm text-slate-400">Fraud model status</div>
+                  <div className="mt-2 text-white">
+                    {aiInsight?.fraudModelSource === "trained_model"
+                      ? "Using trained fraud model for review routing."
+                      : "Using safe fallback fraud logic."}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-2xl font-semibold text-white">Simulated instant payout</h2>
+                <StatusPill label="UPI simulator" tone="good" />
+              </div>
+
+              <div className="text-slate-300">
+                Release an approved payout instantly through the simulated UPI payout gateway.
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  onClick={handleReleasePayout}
+                  disabled={!canReleasePayout || payoutLoading}
+                  className="rounded-2xl bg-white px-5 py-3 font-semibold text-[#07111f] transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {payoutLoading ? "Processing..." : "Release payout"}
+                </button>
+
+                <div className="rounded-2xl bg-white/5 px-4 py-3 text-sm text-slate-300 ring-1 ring-white/10">
+                  {canReleasePayout
+                    ? "An approved claim is ready for simulated payout."
+                    : "Payout release becomes available after claim approval."}
                 </div>
               </div>
             </div>
@@ -238,7 +394,7 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
                     {history[0].payoutReference}
                   </div>
                   <div className="mt-1 text-sm text-slate-300">
-                    Channel: {history[0].payoutChannel || "UPI"}
+                    Channel: {history[0].payoutChannel || "UPI Simulator"}
                   </div>
                 </div>
               ) : null}
@@ -343,14 +499,19 @@ function InsightCard({
   label,
   value,
   tone,
+  icon,
 }: {
   label: string;
   value: string;
   tone: "good" | "warn" | "danger";
+  icon?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-      <div className="text-sm text-slate-400">{label}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-slate-400">{label}</div>
+        <div className="text-slate-300">{icon}</div>
+      </div>
       <div className="mt-3">
         <StatusPill label={capitalize(value)} tone={tone} />
       </div>

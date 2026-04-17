@@ -21,59 +21,70 @@ def monitor_workers_job():
     users = get_all_users_basic()
 
     for user in users:
-        user_id = str(user["_id"])
+        try:
+            user_id = str(user["_id"])
+            city = user.get("city")
 
-        city = user.get("city")
-        if not city:
-            continue
+            if not city:
+                continue
 
-        result = get_live_condition_result(
-            city=city,
-            zone=user.get("zone"),
-        )
+            result = get_live_condition_result(
+                city=city,
+                zone=user.get("zone"),
+            )
 
-        if result.get("error"):
+            if result.get("error"):
+                add_activity(
+                    "Scheduler check failed",
+                    result.get("reason", "Live condition lookup failed."),
+                    user_id,
+                )
+                continue
+
+            new_scenario = result["mappedScenario"]
+            previous_scenario = get_current_scenario_for_user(user_id)
+
             add_activity(
-                "Scheduler check failed",
-                result.get("reason", "Live condition lookup failed."),
+                "Scheduler checked conditions",
+                f"{result['queryUsed']} -> {new_scenario}",
                 user_id,
             )
-            continue
 
-        new_scenario = result["mappedScenario"]
-        previous_scenario = get_current_scenario_for_user(user_id)
+            if new_scenario == previous_scenario:
+                continue
 
-        add_activity(
-            "Scheduler checked conditions",
-            f"{result['queryUsed']} -> {new_scenario}",
-            user_id,
-        )
+            set_current_scenario_for_user(user_id, new_scenario)
 
-        if new_scenario == previous_scenario:
-            continue
+            plan_info = get_plan_by_name(
+                user.get("plan", "Core"),
+                worker=user,
+                scenario=new_scenario,
+            )
+            create_or_update_policy_for_user(user_id, plan_info)
 
-        set_current_scenario_for_user(user_id, new_scenario)
+            claim_data = build_claim(user, new_scenario)
+            add_claim_history(
+                user_id=user_id,
+                scenario=new_scenario,
+                claim=claim_data["claim"],
+                plan_info=claim_data["planInfo"],
+            )
 
-        plan_info = get_plan_by_name(
-            user.get("plan", "Core"),
-            worker=user,
-            scenario=new_scenario,
-        )
-        create_or_update_policy_for_user(user_id, plan_info)
+            add_activity(
+                "Scenario auto-updated by scheduler",
+                f"{previous_scenario} -> {new_scenario}",
+                user_id,
+            )
 
-        claim_data = build_claim(user, new_scenario)
-        add_claim_history(
-            user_id=user_id,
-            scenario=new_scenario,
-            claim=claim_data["claim"],
-            plan_info=claim_data["planInfo"],
-        )
-
-        add_activity(
-            "Scenario auto-updated by scheduler",
-            f"{previous_scenario} -> {new_scenario}",
-            user_id,
-        )
+        except Exception as exc:
+            try:
+                add_activity(
+                    "Scheduler internal error",
+                    str(exc),
+                    str(user.get("_id", "")),
+                )
+            except Exception:
+                pass
 
 
 def start_scheduler():
@@ -87,6 +98,8 @@ def start_scheduler():
         trigger=IntervalTrigger(minutes=1),
         id="monitor_workers_job",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
     scheduler.start()
     _scheduler_started = True

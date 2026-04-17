@@ -13,6 +13,8 @@ from .routers.reset import router as reset_router
 from .routers.scenarios import router as scenarios_router
 from .routers.worker import router as worker_router
 from .services.scheduler_service import shutdown_scheduler, start_scheduler
+from .routers.monitoring import router as monitoring_router
+
 
 app = FastAPI(title="IncomeShield AI Backend", version="0.1.0")
 
@@ -48,3 +50,4 @@ app.include_router(claim_history_router)
 app.include_router(activity_router)
 app.include_router(admin_router)
 app.include_router(reset_router)
+app.include_router(monitoring_router)

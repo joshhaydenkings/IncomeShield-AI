@@ -1,8 +1,8 @@
 {
-  "last_scan_at": "2026-04-14T06:12:19.108723+00:00",
-  "run_count": 120,
+  "last_scan_at": "2026-04-17T12:54:24.572293+00:00",
+  "run_count": 122,
   "last_summary": {
-    "scan_timestamp": "2026-04-14T06:12:19.108723+00:00",
+    "scan_timestamp": "2026-04-17T12:54:24.572293+00:00",
     "zones_checked": 3,
     "zones_with_errors": 0,
     "events_detected": 0,
@@ -11,6 +11,102 @@
   },
   "recent_events": [],
   "scan_history": [
+    {
+      "scan_timestamp": "2026-04-17T12:54:24.572293+00:00",
+      "summary": {
+        "scan_timestamp": "2026-04-17T12:54:24.572293+00:00",
+        "zones_checked": 3,
+        "zones_with_errors": 0,
+        "events_detected": 0,
+        "event_types": [],
+        "data_source": "live_open_meteo"
+      },
+      "events": [],
+      "signals": [
+        {
+          "zone": "Chennai Central",
+          "latitude": 13.0827,
+          "longitude": 80.2707,
+          "temperature_c": 30.8,
+          "precipitation_mm": 0.0,
+          "rain_mm": 0.0,
+          "wind_speed_kmh": 10.0,
+          "european_aqi": 25.0,
+          "pm2_5": 8.2
+        },
+        {
+          "zone": "Chennai North",
+          "latitude": 13.16,
+          "longitude": 80.3,
+          "temperature_c": 31.0,
+          "precipitation_mm": 0.0,
+          "rain_mm": 0.0,
+          "wind_speed_kmh": 11.4,
+          "european_aqi": 25.0,
+          "pm2_5": 8.2
+        },
+        {
+          "zone": "Chennai South",
+          "latitude": 12.9249,
+          "longitude": 80.1275,
+          "temperature_c": 31.0,
+          "precipitation_mm": 0.0,
+          "rain_mm": 0.0,
+          "wind_speed_kmh": 10.3,
+          "european_aqi": 28.0,
+          "pm2_5": 7.0
+        }
+      ],
+      "errors": []
+    },
+    {
+      "scan_timestamp": "2026-04-15T17:53:42.579158+00:00",
+      "summary": {
+        "scan_timestamp": "2026-04-15T17:53:42.579158+00:00",
+        "zones_checked": 3,
+        "zones_with_errors": 0,
+        "events_detected": 0,
+        "event_types": [],
+        "data_source": "live_open_meteo"
+      },
+      "events": [],
+      "signals": [
+        {
+          "zone": "Chennai Central",
+          "latitude": 13.0827,
+          "longitude": 80.2707,
+          "temperature_c": 29.1,
+          "precipitation_mm": 0.0,
+          "rain_mm": 0.0,
+          "wind_speed_kmh": 7.6,
+          "european_aqi": 26.0,
+          "pm2_5": 8.9
+        },
+        {
+          "zone": "Chennai North",
+          "latitude": 13.16,
+          "longitude": 80.3,
+          "temperature_c": 28.2,
+          "precipitation_mm": 0.0,
+          "rain_mm": 0.0,
+          "wind_speed_kmh": 6.5,
+          "european_aqi": 26.0,
+          "pm2_5": 8.9
+        },
+        {
+          "zone": "Chennai South",
+          "latitude": 12.9249,
+          "longitude": 80.1275,
+          "temperature_c": 27.6,
+          "precipitation_mm": 0.0,
+          "rain_mm": 0.0,
+          "wind_speed_kmh": 5.6,
+          "european_aqi": 22.0,
+          "pm2_5": 10.4
+        }
+      ],
+      "errors": []
+    },
     {
       "scan_timestamp": "2026-04-14T06:12:19.108723+00:00",
       "summary": {
@@ -351,102 +447,6 @@
       "scan_timestamp": "2026-04-14T05:27:04.510285+00:00",
       "summary": {
         "scan_timestamp": "2026-04-14T05:27:04.510285+00:00",
-        "zones_checked": 3,
-        "zones_with_errors": 0,
-        "events_detected": 0,
-        "event_types": [],
-        "data_source": "live_open_meteo"
-      },
-      "events": [],
-      "signals": [
-        {
-          "zone": "Chennai Central",
-          "latitude": 13.0827,
-          "longitude": 80.2707,
-          "temperature_c": 33.3,
-          "precipitation_mm": 0.0,
-          "rain_mm": 0.0,
-          "wind_speed_kmh": 7.6,
-          "european_aqi": 29.0,
-          "pm2_5": 12.0
-        },
-        {
-          "zone": "Chennai North",
-          "latitude": 13.16,
-          "longitude": 80.3,
-          "temperature_c": 32.4,
-          "precipitation_mm": 0.0,
-          "rain_mm": 0.0,
-          "wind_speed_kmh": 8.4,
-          "european_aqi": 29.0,
-          "pm2_5": 12.0
-        },
-        {
-          "zone": "Chennai South",
-          "latitude": 12.9249,
-          "longitude": 80.1275,
-          "temperature_c": 32.9,
-          "precipitation_mm": 0.0,
-          "rain_mm": 0.0,
-          "wind_speed_kmh": 7.6,
-          "european_aqi": 29.0,
-          "pm2_5": 11.2
-        }
-      ],
-      "errors": []
-    },
-    {
-      "scan_timestamp": "2026-04-14T05:25:03.008304+00:00",
-      "summary": {
-        "scan_timestamp": "2026-04-14T05:25:03.008304+00:00",
-        "zones_checked": 3,
-        "zones_with_errors": 0,
-        "events_detected": 0,
-        "event_types": [],
-        "data_source": "live_open_meteo"
-      },
-      "events": [],
-      "signals": [
-        {
-          "zone": "Chennai Central",
-          "latitude": 13.0827,
-          "longitude": 80.2707,
-          "temperature_c": 33.3,
-          "precipitation_mm": 0.0,
-          "rain_mm": 0.0,
-          "wind_speed_kmh": 7.6,
-          "european_aqi": 29.0,
-          "pm2_5": 12.0
-        },
-        {
-          "zone": "Chennai North",
-          "latitude": 13.16,
-          "longitude": 80.3,
-          "temperature_c": 32.4,
-          "precipitation_mm": 0.0,
-          "rain_mm": 0.0,
-          "wind_speed_kmh": 8.4,
-          "european_aqi": 29.0,
-          "pm2_5": 12.0
-        },
-        {
-          "zone": "Chennai South",
-          "latitude": 12.9249,
-          "longitude": 80.1275,
-          "temperature_c": 32.9,
-          "precipitation_mm": 0.0,
-          "rain_mm": 0.0,
-          "wind_speed_kmh": 7.6,
-          "european_aqi": 29.0,
-          "pm2_5": 11.2
-        }
-      ],
-      "errors": []
-    },
-    {
-      "scan_timestamp": "2026-04-14T05:24:33.278092+00:00",
-      "summary": {
-        "scan_timestamp": "2026-04-14T05:24:33.278092+00:00",
         "zones_checked": 3,
         "zones_with_errors": 0,
         "events_detected": 0,

@@ -219,18 +219,43 @@ function App() {
   const handleScenarioChange = async (nextScenario: ScenarioKey) => {
     try {
       setError("");
+
       const res = await apiFetch<{
         currentScenario?: ScenarioKey;
         scenario?: ScenarioKey;
+        message?: string;
       }>("/scenarios/current", {
         method: "PUT",
         body: JSON.stringify({ scenario: nextScenario }),
       });
 
-      setScenario(res.currentScenario || res.scenario || nextScenario);
+      const savedScenario = res.currentScenario || res.scenario || nextScenario;
+      setScenario(savedScenario);
     } catch (err) {
       console.error(err);
       setError("Failed to update scenario.");
+    }
+  };
+
+  const handleUseLiveScenario = async () => {
+    try {
+      setError("");
+
+      const res = await apiFetch<{
+        currentScenario?: ScenarioKey;
+        scenario?: ScenarioKey;
+        matchedScenario?: ScenarioKey;
+      }>("/scenarios/sync-live", {
+        method: "POST",
+      });
+
+      const syncedScenario =
+        res.currentScenario || res.scenario || res.matchedScenario || "normal";
+
+      setScenario(syncedScenario);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to sync live scenario.");
     }
   };
 
@@ -328,6 +353,7 @@ function App() {
           scenario={scenario}
           onScenarioChange={handleScenarioChange}
           onGoToClaims={() => setPage("claims")}
+          onUseLiveScenario={handleUseLiveScenario}
           simpleMode={simpleMode}
         />
       )}

@@ -1,135 +1,153 @@
+from __future__ import annotations
+
 import json
+from urllib.error import URLError
 from urllib.parse import quote
 from urllib.request import urlopen
 
 
 def _fetch_json(url: str):
-    with urlopen(url, timeout=15) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urlopen(url, timeout=8) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"Live API request failed: {exc}") from exc
 
 
-def geocode_place(query: str):
+def _map_live_data_to_scenario(weather: dict, air: dict) -> tuple[str, str]:
+    current_weather = weather.get("current", {}) or {}
+    current_air = air.get("current", {}) or {}
+
+    rain = float(current_weather.get("rain", 0) or 0)
+    precipitation = float(current_weather.get("precipitation", 0) or 0)
+    temperature = float(current_weather.get("temperature_2m", 0) or 0)
+    european_aqi = float(current_air.get("european_aqi", 0) or 0)
+    pm25 = float(current_air.get("pm2_5", 0) or 0)
+
+    if rain >= 8 or precipitation >= 8:
+        return "flood", f"Heavy rain detected ({rain} mm rain, {precipitation} mm precipitation)."
+
+    if rain >= 2 or precipitation >= 2:
+        return "rain", f"Rain disruption detected ({rain} mm rain, {precipitation} mm precipitation)."
+
+    if european_aqi >= 100 or pm25 >= 75:
+        return "aqi", f"Unsafe air quality detected (AQI {european_aqi}, PM2.5 {pm25})."
+
+    if temperature >= 43:
+        return "aqi", f"Extreme outdoor heat detected ({temperature}°C), mapped to unsafe work conditions."
+
+    return "normal", "Conditions look normal from live public data."
+
+
+def geocode_public_location(city: str, zone: str | None = None):
+    query = city.strip()
+    if zone and zone.strip():
+        query = f"{zone.strip()}, {city.strip()}"
+
     url = (
         "https://geocoding-api.open-meteo.com/v1/search"
         f"?name={quote(query)}&count=1&language=en&format=json"
     )
-    data = _fetch_json(url)
+
+    try:
+        data = _fetch_json(url)
+    except Exception as exc:
+        return {
+            "error": True,
+            "reason": f"Geocoding failed: {exc}",
+        }
+
     results = data.get("results") or []
     if not results:
-        return None
+        return {
+            "error": True,
+            "reason": f"Could not find public location data for {query}.",
+        }
 
-    first = results[0]
+    match = results[0]
     return {
-        "name": first.get("name", query),
-        "latitude": first["latitude"],
-        "longitude": first["longitude"],
-        "country": first.get("country", ""),
-        "admin1": first.get("admin1", ""),
+        "error": False,
+        "name": match.get("name", query),
+        "latitude": match.get("latitude"),
+        "longitude": match.get("longitude"),
+        "admin1": match.get("admin1"),
+        "country": match.get("country"),
+        "queryUsed": query,
     }
-
-
-def resolve_worker_location(city: str, zone: str | None = None):
-    queries = []
-
-    if zone and zone.strip():
-        queries.append(f"{zone}, {city}")
-    queries.append(city)
-
-    for query in queries:
-        result = geocode_place(query)
-        if result:
-            return {
-                "queryUsed": query,
-                "location": result,
-            }
-
-    return None
 
 
 def get_live_weather_and_aqi(latitude: float, longitude: float):
     weather_url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={latitude}&longitude={longitude}"
-        "&current=temperature_2m,precipitation,rain,showers,weather_code,wind_speed_10m"
-        "&timezone=auto"
+        "&current=temperature_2m,precipitation,rain,wind_speed_10m&timezone=auto"
     )
 
     air_url = (
         "https://air-quality-api.open-meteo.com/v1/air-quality"
         f"?latitude={latitude}&longitude={longitude}"
-        "&current=us_aqi,pm2_5"
-        "&timezone=auto"
+        "&current=european_aqi,pm2_5&timezone=auto"
     )
 
-    weather = _fetch_json(weather_url)
-    air = _fetch_json(air_url)
-
-    current_weather = weather.get("current", {})
-    current_air = air.get("current", {})
-
-    return {
-        "temperature": current_weather.get("temperature_2m"),
-        "precipitation": current_weather.get("precipitation", 0),
-        "rain": current_weather.get("rain", 0),
-        "showers": current_weather.get("showers", 0),
-        "weatherCode": current_weather.get("weather_code"),
-        "windSpeed": current_weather.get("wind_speed_10m"),
-        "aqi": current_air.get("us_aqi"),
-        "pm25": current_air.get("pm2_5"),
-    }
-
-
-def map_live_data_to_scenario(data: dict):
-    precipitation = float(data.get("precipitation") or 0)
-    rain = float(data.get("rain") or 0)
-    showers = float(data.get("showers") or 0)
-    aqi = data.get("aqi")
-    wind_speed = float(data.get("windSpeed") or 0)
-
-    total_rain = precipitation + rain + showers
-
-    if aqi is not None and float(aqi) >= 150:
+    try:
+        weather = _fetch_json(weather_url)
+        air = _fetch_json(air_url)
         return {
-            "scenario": "aqi",
-            "reason": f"Live AQI is {aqi}, which is unhealthy.",
+            "error": False,
+            "weather": weather,
+            "air": air,
         }
-
-    if total_rain >= 15 or wind_speed >= 45:
+    except Exception as exc:
         return {
-            "scenario": "flood",
-            "reason": f"Heavy live precipitation or wind detected ({total_rain} mm, {wind_speed} km/h).",
+            "error": True,
+            "reason": f"Live weather/AQI fetch failed: {exc}",
         }
-
-    if total_rain >= 2:
-        return {
-            "scenario": "rain",
-            "reason": f"Live rain detected ({total_rain} mm).",
-        }
-
-    return {
-        "scenario": "normal",
-        "reason": "Live conditions look stable right now.",
-    }
 
 
 def get_live_condition_result(city: str, zone: str | None = None):
-    resolved = resolve_worker_location(city, zone)
-    if not resolved:
-        place_text = f"{zone}, {city}" if zone else city
+    location = geocode_public_location(city, zone)
+    if location.get("error"):
         return {
             "error": True,
-            "reason": f"Could not find location for '{place_text}'.",
+            "reason": location["reason"],
+            "mappedScenario": "normal",
+            "queryUsed": zone.strip() + ", " + city.strip() if zone and zone.strip() else city.strip(),
+            "location": {
+                "name": city,
+                "latitude": None,
+                "longitude": None,
+            },
         }
 
-    location = resolved["location"]
     live_data = get_live_weather_and_aqi(location["latitude"], location["longitude"])
-    mapped = map_live_data_to_scenario(live_data)
+    if live_data.get("error"):
+        return {
+            "error": True,
+            "reason": live_data["reason"],
+            "mappedScenario": "normal",
+            "queryUsed": location["queryUsed"],
+            "location": {
+                "name": location["name"],
+                "latitude": location["latitude"],
+                "longitude": location["longitude"],
+            },
+        }
+
+    mapped_scenario, reason = _map_live_data_to_scenario(
+        live_data["weather"],
+        live_data["air"],
+    )
 
     return {
         "error": False,
-        "queryUsed": resolved["queryUsed"],
-        "location": location,
-        "liveData": live_data,
-        "mappedScenario": mapped["scenario"],
-        "reason": mapped["reason"],
+        "mappedScenario": mapped_scenario,
+        "reason": reason,
+        "queryUsed": location["queryUsed"],
+        "location": {
+            "name": location["name"],
+            "latitude": location["latitude"],
+            "longitude": location["longitude"],
+        },
+        "weather": live_data["weather"],
+        "air": live_data["air"],
     }

@@ -3,9 +3,13 @@ from .risk_model_service import predict_risk
 from ..ml.fraud_model_service import score_fraud
 
 
+def _normalize_text(value: str) -> str:
+    return (value or "").strip().lower()
+
+
 def _build_fraud_features(worker: dict, scenario: str) -> dict:
-    city = (worker.get("city", "") or "").strip().lower()
-    zone = (worker.get("zone", "") or "").strip().lower()
+    city = _normalize_text(worker.get("city", ""))
+    zone = _normalize_text(worker.get("zone", ""))
     shift = worker.get("shift", "")
     worker_type = worker.get("workerType", "")
 
@@ -22,31 +26,53 @@ def _build_fraud_features(worker: dict, scenario: str) -> dict:
     device_change_count_30d = 0
     platform_inactivity_minutes = 40
 
+    weather_sensitive_city = city in {"chennai", "mumbai", "kolkata", "hyderabad", "bengaluru", "delhi"}
+
     if scenario == "gps_spoof":
-        gps_jump_score = 0.92
-        signal_match_score = 0.25
-        trust_score = 0.32
-        claim_count_7d = 3
+        gps_jump_score = 0.96
+        signal_match_score = 0.18
+        trust_score = 0.25
+        claim_count_7d = 4
         device_change_count_30d = 2
-        platform_inactivity_minutes = 6
+        platform_inactivity_minutes = 5
+
     elif scenario == "flood":
         gps_jump_score = 0.18
         signal_match_score = 0.9
         trust_score = 0.86
         claim_count_7d = 1
         platform_inactivity_minutes = 70
+
+        # Fake flood/weather claim suspicion in lower-risk location contexts
+        if not weather_sensitive_city and zone_risk_score < 0.45:
+            signal_match_score = 0.62
+            trust_score = 0.68
+            claim_count_7d = 2
+
     elif scenario == "rain":
         gps_jump_score = 0.2
         signal_match_score = 0.88
         trust_score = 0.84
         claim_count_7d = 1
         platform_inactivity_minutes = 55
+
+        if not weather_sensitive_city and zone_risk_score < 0.45:
+            signal_match_score = 0.7
+            trust_score = 0.72
+            claim_count_7d = 2
+
     elif scenario == "aqi":
         gps_jump_score = 0.16
         signal_match_score = 0.9
         trust_score = 0.85
         claim_count_7d = 1
         platform_inactivity_minutes = 60
+
+        if city not in {"delhi", "mumbai", "kolkata", "chennai"}:
+            signal_match_score = 0.72
+            trust_score = 0.7
+            claim_count_7d = 2
+
     elif scenario == "outage":
         gps_jump_score = 0.12
         signal_match_score = 0.93
@@ -54,11 +80,22 @@ def _build_fraud_features(worker: dict, scenario: str) -> dict:
         claim_count_7d = 1
         platform_inactivity_minutes = 80
 
+    elif scenario == "normal":
+        gps_jump_score = 0.08
+        signal_match_score = 0.96
+        trust_score = 0.93
+        claim_count_7d = 0
+        device_change_count_30d = 0
+        platform_inactivity_minutes = 45
+
     if shift == "6 PM - 11 PM":
         zone_risk_score = min(1.0, zone_risk_score + 0.08)
 
     if worker_type == "Ride Share":
         zone_risk_score = min(1.0, zone_risk_score + 0.05)
+
+    if worker_type == "Grocery / Quick Commerce":
+        zone_risk_score = min(1.0, zone_risk_score + 0.03)
 
     return {
         "claim_count_7d": claim_count_7d,
@@ -69,6 +106,40 @@ def _build_fraud_features(worker: dict, scenario: str) -> dict:
         "platform_inactivity_minutes": platform_inactivity_minutes,
         "zone_risk_score": zone_risk_score,
     }
+
+
+def _build_fraud_explanations(worker: dict, scenario: str, fraud_features: dict, fraud_probability: float) -> list[str]:
+    city = _normalize_text(worker.get("city", ""))
+    zone = _normalize_text(worker.get("zone", ""))
+
+    reasons: list[str] = []
+
+    if scenario == "gps_spoof":
+        reasons.append("GPS spoof pattern detected from location mismatch signals.")
+    if fraud_features["gps_jump_score"] >= 0.85:
+        reasons.append("Very high GPS jump score increased fraud suspicion.")
+    if fraud_features["signal_match_score"] <= 0.35:
+        reasons.append("Signal match score was unusually low for a valid delivery pattern.")
+    if fraud_features["trust_score"] <= 0.35:
+        reasons.append("Trust score dropped below the safe threshold.")
+    if fraud_features["device_change_count_30d"] >= 2:
+        reasons.append("Multiple recent device changes increased verification risk.")
+    if fraud_features["claim_count_7d"] >= 3:
+        reasons.append("Repeated recent claims increased the manual review likelihood.")
+
+    if scenario in {"flood", "rain", "aqi"} and fraud_probability >= 0.45:
+        reasons.append("Weather-linked claim showed partial mismatch against expected disruption trust signals.")
+
+    if scenario == "flood" and city not in {"chennai", "mumbai", "kolkata", "hyderabad", "bengaluru", "delhi"}:
+        reasons.append("Flood claim came from a lower-priority monitored weather region, so review confidence was reduced.")
+
+    if scenario == "aqi" and city not in {"delhi", "mumbai", "kolkata", "chennai"}:
+        reasons.append("AQI claim came from a location with weaker pollution-risk priors, increasing review sensitivity.")
+
+    if zone and any(keyword in zone for keyword in ["tambaram", "potheri", "velachery", "thoraipakkam"]):
+        reasons.append("Zone risk profile slightly increased fraud review sensitivity.")
+
+    return reasons
 
 
 def build_claim(worker: dict, scenario: str):
@@ -196,6 +267,14 @@ def build_claim(worker: dict, scenario: str):
             ]
         )
 
+    fraud_explanations = _build_fraud_explanations(
+        worker=worker,
+        scenario=scenario,
+        fraud_features=fraud_features,
+        fraud_probability=fraud_probability,
+    )
+    reasons.extend(fraud_explanations)
+
     if fraud_flag:
         reasons.append("Fraud model triggered manual review override.")
 
@@ -222,6 +301,9 @@ def build_claim(worker: dict, scenario: str):
             "riskTrainedAt": risk_result.get("trainedAt"),
             "fraudModelSource": fraud_result.get("model_source"),
             "fraudTrainedAt": fraud_result.get("trained_at"),
+            "fraudProbability": round(fraud_probability, 4),
+            "fraudDecision": fraud_decision,
+            "fraudSignals": fraud_features,
         },
     }
 

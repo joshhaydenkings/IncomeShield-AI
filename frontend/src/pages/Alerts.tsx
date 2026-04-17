@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bell,
   ShieldCheck,
@@ -7,11 +7,16 @@ import {
   CloudRain,
   MapPin,
   Satellite,
+  Brain,
+  Bot,
+  Cpu,
+  Clock3,
 } from "lucide-react";
 import type { ScenarioKey } from "../services/mockData";
 import { getEarnabilityLabel, tr } from "../services/translations";
 import { useVoice } from "../hooks/useVoice";
 import { useClaimData } from "../hooks/useClaimData";
+import { useActivity } from "../hooks/useActivity";
 import { buildAlertsVoice } from "../utils/pageVoice";
 import { syncLiveScenario } from "../api/liveScenario";
 import VoiceButton from "../components/common/VoiceButton";
@@ -24,8 +29,9 @@ import type { WorkerProfile } from "../types";
 type AlertsProps = {
   worker: WorkerProfile;
   scenario: ScenarioKey;
-  onScenarioChange: (scenario: ScenarioKey) => void;
-  onGoToClaims: () => void;
+  onScenarioChange?: (scenario: ScenarioKey) => void;
+  onGoToClaims?: () => void;
+  onUseLiveScenario?: () => void | Promise<void>;
   simpleMode: boolean;
 };
 
@@ -34,12 +40,69 @@ function Alerts({
   scenario,
   onScenarioChange,
   onGoToClaims,
+  onUseLiveScenario,
   simpleMode,
 }: AlertsProps) {
   const { speak } = useVoice(worker.language);
   const { data: claimData, loading, error } = useClaimData([scenario]);
+  const { items: activityItems } = useActivity([scenario, worker.plan]);
   const [liveSyncMessage, setLiveSyncMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
+
+  const handleScenarioChange = (next: ScenarioKey) => {
+    if (onScenarioChange) {
+      onScenarioChange(next);
+    }
+  };
+
+  const monitoringSummary = useMemo(() => {
+    const schedulerActivity = activityItems.find((item) =>
+      item.title.toLowerCase().includes("scheduler checked conditions"),
+    );
+    const autoUpdateActivity = activityItems.find((item) =>
+      item.title.toLowerCase().includes("scenario auto-updated by scheduler"),
+    );
+
+    return {
+      lastCheck:
+        schedulerActivity?.detail ||
+        (simpleMode
+          ? "Auto-checks are running in the background."
+          : "Background monitoring is checking your live conditions automatically."),
+      lastAutoUpdate:
+        autoUpdateActivity?.detail ||
+        (simpleMode
+          ? "No recent automatic change."
+          : "No recent automatic scenario change was needed."),
+    };
+  }, [activityItems, simpleMode]);
+
+  const handleLiveSync = async () => {
+    try {
+      setSyncing(true);
+      setLiveSyncMessage("");
+
+      if (onUseLiveScenario) {
+        await onUseLiveScenario();
+        setLiveSyncMessage("Live public data synced successfully.");
+        return;
+      }
+
+      const res = await syncLiveScenario();
+      if (onScenarioChange && res.currentScenario) {
+        onScenarioChange(res.currentScenario as ScenarioKey);
+      }
+
+      setLiveSyncMessage(
+        `Live data synced using "${res.queryUsed}". Matched location: ${res.location.name}. ${res.reason}`,
+      );
+    } catch (err) {
+      setLiveSyncMessage("Could not sync live public data right now.");
+      console.error(err);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loading || !claimData) {
     return (
@@ -52,8 +115,21 @@ function Alerts({
   }
 
   const { claim } = claimData;
-  const statusLabel = getEarnabilityLabel(claim.score);
+  const aiInsight = claim.aiInsight as
+    | {
+        predictedRisk?: string;
+        predictedFraud?: boolean;
+        inputSummary?: string;
+        modelSource?: string;
+        trainedAt?: string;
+        riskModelSource?: string;
+        riskTrainedAt?: string;
+        fraudModelSource?: string;
+        fraudTrainedAt?: string;
+      }
+    | undefined;
 
+  const statusLabel = getEarnabilityLabel(claim.score);
 
   const statusColor =
     claim.score >= 70
@@ -78,22 +154,10 @@ function Alerts({
     statusLabel,
   });
 
-  const handleLiveSync = async () => {
-    try {
-      setSyncing(true);
-      setLiveSyncMessage("");
-      const res = await syncLiveScenario();
-      onScenarioChange(res.currentScenario as ScenarioKey);
-      setLiveSyncMessage(
-        `Live data synced using "${res.queryUsed}". Matched location: ${res.location.name}. ${res.reason}`
-      );
-    } catch (err) {
-      setLiveSyncMessage("Could not sync live public data right now.");
-      console.error(err);
-    } finally {
-      setSyncing(false);
-    }
-  };
+  const modelActive =
+    aiInsight?.riskModelSource === "trained_model" ||
+    aiInsight?.fraudModelSource === "trained_model" ||
+    aiInsight?.modelSource === "trained_model";
 
   return (
     <div className="min-h-screen bg-[#07111f] px-4 py-8 md:px-8">
@@ -126,12 +190,14 @@ function Alerts({
                 <Satellite className="h-4 w-4" />
                 {syncing ? "Syncing..." : "Use live data"}
               </button>
-              <button
-                onClick={onGoToClaims}
-                className="rounded-2xl bg-white px-5 py-3 font-medium text-[#07111f] transition hover:bg-slate-200"
-              >
-                {tr(worker.language, "viewClaimStatus")}
-              </button>
+              {onGoToClaims ? (
+                <button
+                  onClick={onGoToClaims}
+                  className="rounded-2xl bg-white px-5 py-3 font-medium text-[#07111f] transition hover:bg-slate-200"
+                >
+                  {tr(worker.language, "viewClaimStatus")}
+                </button>
+              ) : null}
             </>
           }
         />
@@ -226,6 +292,77 @@ function Alerts({
             </div>
 
             <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-2xl font-semibold text-white">
+                  {simpleMode ? "AI details" : "AI monitoring and decision details"}
+                </h2>
+                <StatusPill
+                  label={modelActive ? "Model active" : "Fallback safe mode"}
+                  tone={modelActive ? "good" : "warn"}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <InfoCard
+                  label="Risk model"
+                  value={
+                    aiInsight?.riskModelSource === "trained_model" ||
+                    aiInsight?.modelSource === "trained_model"
+                      ? "Trained model"
+                      : "Fallback rules"
+                  }
+                  subtext="Current risk prediction source"
+                  icon={<Brain className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Risk score"
+                  value={`${claim.score}/100`}
+                  subtext={`Predicted ${claim.risk} risk`}
+                  icon={<Cpu className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Fraud screening"
+                  value={
+                    aiInsight?.fraudModelSource === "trained_model"
+                      ? "Trained model"
+                      : "Fallback rules"
+                  }
+                  subtext={claim.fraudFlag ? "Manual review likely" : "No fraud signal"}
+                  icon={<Bot className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Scheduler"
+                  value="Active"
+                  subtext="Background monitoring is running"
+                  icon={<Activity className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Current scenario"
+                  value={scenario.toUpperCase()}
+                  subtext="Live condition state"
+                  icon={<CloudRain className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Decision route"
+                  value={claim.fraudFlag ? "Manual review" : "Auto process"}
+                  subtext="Current payout path"
+                  icon={<AlertTriangle className="h-5 w-5" />}
+                />
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                <div className="text-sm font-medium text-white">Why the app decided this</div>
+                <div className="mt-3 space-y-2">
+                  {claim.reasons.slice(0, 4).map((reason, index) => (
+                    <div key={index} className="text-sm text-slate-300">
+                      • {reason}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
               <h2 className="text-2xl font-semibold text-white">
                 Live conditions
               </h2>
@@ -236,7 +373,7 @@ function Alerts({
               </p>
 
               <div className="mt-6">
-                <ScenarioSelector value={scenario} onChange={onScenarioChange} />
+                <ScenarioSelector value={scenario} onChange={handleScenarioChange} />
               </div>
             </div>
           </div>
@@ -250,13 +387,37 @@ function Alerts({
               icon={<ShieldCheck className="h-5 w-5" />}
             />
 
+            <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10">
+              <div className="mb-4 flex items-center gap-2 text-slate-300">
+                <Clock3 className="h-5 w-5" />
+                <h3 className="text-xl font-semibold text-white">
+                  {simpleMode ? "Monitoring" : "Live monitoring summary"}
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="text-sm font-medium text-white">Last check</div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {monitoringSummary.lastCheck}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="text-sm font-medium text-white">Last auto-update</div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {monitoringSummary.lastAutoUpdate}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <InfoCard
-              label="Monitoring"
+              label="Monitoring mode"
               value={simpleMode ? "Live tracking" : "Live scenario tracking"}
               subtext={
                 simpleMode
                   ? "Alerts change with conditions."
-                  : "Alerts update with the current condition."
+                  : "Alerts update with the current condition and automated checks."
               }
               icon={<AlertTriangle className="h-5 w-5" />}
             />

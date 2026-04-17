@@ -1,5 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { WorkerProfile } from "../types";
+
+type SettingsWorker = WorkerProfile & {
+  pincode?: string;
+  normalized_location?: string;
+  resolved_name?: string;
+  resolved_admin1?: string;
+  resolved_country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string;
+};
 
 type SettingsProps = {
   worker: WorkerProfile;
@@ -30,13 +41,54 @@ const LANGUAGE_OPTIONS = [
 const PLAN_OPTIONS = ["Lite", "Core", "Shield+"] as const;
 
 function Settings({ worker, onSave, onBack }: SettingsProps) {
-  const [form, setForm] = useState<WorkerProfile>(worker);
+  const [form, setForm] = useState<SettingsWorker>({
+    ...worker,
+    pincode: "",
+    normalized_location: "",
+    resolved_name: "",
+    resolved_admin1: "",
+    resolved_country: "",
+    latitude: null,
+    longitude: null,
+    timezone: "Asia/Kolkata",
+    ...worker,
+  });
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const updateField = <K extends keyof WorkerProfile>(
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      ...worker,
+      pincode: (worker as SettingsWorker).pincode ?? prev.pincode ?? "",
+      normalized_location:
+        (worker as SettingsWorker).normalized_location ??
+        prev.normalized_location ??
+        "",
+      resolved_name:
+        (worker as SettingsWorker).resolved_name ?? prev.resolved_name ?? "",
+      resolved_admin1:
+        (worker as SettingsWorker).resolved_admin1 ??
+        prev.resolved_admin1 ??
+        "",
+      resolved_country:
+        (worker as SettingsWorker).resolved_country ??
+        prev.resolved_country ??
+        "",
+      latitude:
+        (worker as SettingsWorker).latitude ?? prev.latitude ?? null,
+      longitude:
+        (worker as SettingsWorker).longitude ?? prev.longitude ?? null,
+      timezone:
+        (worker as SettingsWorker).timezone ?? prev.timezone ?? "Asia/Kolkata",
+    }));
+  }, [worker]);
+
+  const updateField = <K extends keyof SettingsWorker>(
     key: K,
-    value: WorkerProfile[K]
+    value: SettingsWorker[K]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -45,13 +97,20 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
     try {
       setSaving(true);
       setError("");
-      await onSave(form);
+      setSuccess("");
+      await onSave(form as WorkerProfile);
+      setSuccess("Settings saved. Monitoring will now follow this saved location.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
     }
   };
+
+  const hasResolvedLocation =
+    !!form.normalized_location ||
+    (!!form.latitude && !!form.longitude) ||
+    !!form.resolved_name;
 
   return (
     <div className="min-h-screen bg-[#07111f] px-4 py-8 md:px-8">
@@ -60,7 +119,7 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
           <div>
             <h1 className="text-4xl font-bold text-white">Profile settings</h1>
             <p className="mt-2 text-slate-400">
-              Update your work profile and saved plan.
+              Update your work profile, plan, and saved monitoring location.
             </p>
           </div>
 
@@ -78,6 +137,12 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
           </div>
         ) : null}
 
+        {success ? (
+          <div className="mb-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4 text-emerald-300">
+            {success}
+          </div>
+        ) : null}
+
         <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
           <div className="grid gap-5 md:grid-cols-2">
             <Field label="Name (read only)">
@@ -92,17 +157,34 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
               <input
                 value={form.city}
                 onChange={(e) => updateField("city", e.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none"
+                placeholder="Mumbai"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500"
               />
             </Field>
 
-            <Field label="Zone">
+            <Field label="Zone / locality">
               <input
                 value={form.zone}
                 onChange={(e) => updateField("zone", e.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none"
+                placeholder="Andheri"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500"
               />
             </Field>
+
+            <Field label="Pincode">
+              <input
+                value={form.pincode ?? ""}
+                onChange={(e) => updateField("pincode", e.target.value)}
+                placeholder="400053"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+              />
+            </Field>
+
+            <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+              Save a valid Indian city, area, and optional pincode. The backend
+              geocodes this location and the monitoring engine follows the saved
+              coordinates automatically.
+            </div>
 
             <Field label="Shift">
               <OptionGrid
@@ -132,7 +214,9 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
               <OptionGrid
                 options={[...LANGUAGE_OPTIONS]}
                 value={form.language}
-                onChange={(value) => updateField("language", value as WorkerProfile["language"])}
+                onChange={(value) =>
+                  updateField("language", value as WorkerProfile["language"])
+                }
                 columns={3}
               />
             </Field>
@@ -144,11 +228,59 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
                   label: item,
                 }))}
                 value={form.plan}
-                onChange={(value) => updateField("plan", value as WorkerProfile["plan"])}
+                onChange={(value) =>
+                  updateField("plan", value as WorkerProfile["plan"])
+                }
                 columns={3}
               />
             </Field>
           </div>
+
+          {hasResolvedLocation ? (
+            <div className="mt-8 rounded-3xl bg-white/5 p-5 ring-1 ring-white/10">
+              <h2 className="text-xl font-semibold text-white">
+                Saved monitoring location
+              </h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <InfoRow
+                  label="Normalized location"
+                  value={form.normalized_location || "Not available yet"}
+                />
+                <InfoRow
+                  label="Resolved place"
+                  value={form.resolved_name || "Not available yet"}
+                />
+                <InfoRow
+                  label="State / region"
+                  value={form.resolved_admin1 || "Not available yet"}
+                />
+                <InfoRow
+                  label="Country"
+                  value={form.resolved_country || "India"}
+                />
+                <InfoRow
+                  label="Latitude"
+                  value={
+                    form.latitude !== null && form.latitude !== undefined
+                      ? String(form.latitude)
+                      : "Not available yet"
+                  }
+                />
+                <InfoRow
+                  label="Longitude"
+                  value={
+                    form.longitude !== null && form.longitude !== undefined
+                      ? String(form.longitude)
+                      : "Not available yet"
+                  }
+                />
+                <InfoRow
+                  label="Timezone"
+                  value={form.timezone || "Asia/Kolkata"}
+                />
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-8 flex flex-wrap gap-3">
             <button
@@ -183,6 +315,23 @@ function Field({
     <div className="md:col-span-1">
       <label className="mb-2 block text-sm text-slate-300">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#132640] px-4 py-3">
+      <div className="text-xs uppercase tracking-wide text-slate-400">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-medium text-white">{value}</div>
     </div>
   );
 }

@@ -25,22 +25,43 @@ export function useAdminReview(deps: unknown[] = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const depKey = JSON.stringify(deps);
+  const scenario = typeof deps[0] === "string" ? deps[0] : "";
+
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<AdminReview>("/admin/review");
-        setData(res);
+
+        const path = scenario
+          ? `/admin/review?scenario=${encodeURIComponent(scenario)}`
+          : "/admin/review";
+
+        const res = await apiFetch<AdminReview>(path);
+
+        if (!cancelled) {
+          setData(res);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load admin review.");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load admin review.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     load();
-  }, deps);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [depKey, scenario]);
 
   return { data, loading, error };
 }

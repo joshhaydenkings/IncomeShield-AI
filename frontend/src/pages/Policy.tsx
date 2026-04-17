@@ -1,4 +1,14 @@
-import { ShieldCheck, CalendarDays, BadgeIndianRupee, UserRound, FileText } from "lucide-react";
+import {
+  ShieldCheck,
+  CalendarDays,
+  BadgeIndianRupee,
+  UserRound,
+  FileText,
+  Brain,
+  Cpu,
+  Bot,
+  Sparkles,
+} from "lucide-react";
 import { usePolicy } from "../hooks/usePolicy";
 import { useClaimData } from "../hooks/useClaimData";
 import type { WorkerProfile } from "../types";
@@ -36,6 +46,31 @@ function Policy({ worker }: PolicyProps) {
   const protectionReason = currentClaim?.workerMessage || "No current protection update.";
   const decisionTone = getDecisionTone(currentClaim?.payoutStatus);
 
+  const aiInsight = currentClaim?.aiInsight as
+    | {
+        predictedRisk?: string;
+        predictedFraud?: boolean;
+        inputSummary?: string;
+        modelSource?: string;
+        trainedAt?: string;
+        riskModelSource?: string;
+        riskTrainedAt?: string;
+        fraudModelSource?: string;
+        fraudTrainedAt?: string;
+      }
+    | undefined;
+
+  const pricingMode = policy.pricingMode || "rules";
+  const pricingModeLabel =
+    pricingMode === "ml-hybrid"
+      ? "ML hybrid pricing"
+      : pricingMode === "ml"
+        ? "ML pricing"
+        : "Fallback rule pricing";
+
+  const pricingModeTone =
+    pricingMode === "ml-hybrid" || pricingMode === "ml" ? "good" : "warn";
+
   return (
     <div className="min-h-screen bg-[#07111f] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-6xl">
@@ -51,7 +86,7 @@ function Policy({ worker }: PolicyProps) {
             <div>
               <h1 className="text-3xl font-bold text-white">Policy document</h1>
               <p className="mt-1 text-slate-400">
-                Your current weekly protection details and active coverage status.
+                Your current weekly protection details, pricing logic, and active coverage status.
               </p>
             </div>
           </div>
@@ -136,6 +171,107 @@ function Policy({ worker }: PolicyProps) {
           </div>
 
           <div className="mt-8 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-cyan-300" />
+                <h2 className="text-xl font-semibold text-white">AI pricing details</h2>
+              </div>
+
+              <div
+                className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
+                  pricingModeTone === "good"
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : "bg-amber-500/15 text-amber-300"
+                }`}
+              >
+                {pricingModeLabel}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card
+                label="Pricing mode"
+                value={pricingModeLabel}
+                icon={<Brain className="h-5 w-5" />}
+              />
+              <Card
+                label="Base premium"
+                value={`₹${policy.basePremium ?? policy.weeklyPremium}`}
+                icon={<BadgeIndianRupee className="h-5 w-5" />}
+              />
+              <Card
+                label="Final premium"
+                value={`₹${policy.weeklyPremium}`}
+                icon={<Cpu className="h-5 w-5" />}
+              />
+              <Card
+                label="Risk signal"
+                value={currentClaim?.risk ? capitalize(currentClaim.risk) : "-"}
+                icon={<Bot className="h-5 w-5" />}
+              />
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+              <div className="text-sm font-medium text-white">Why your premium looks like this</div>
+              <div className="mt-3 space-y-2">
+                {(policy.pricingReasons?.length ? policy.pricingReasons : [
+                  "This policy uses your saved worker profile and current conditions to compute weekly pricing.",
+                ]).map((reason: string, index: number) => (
+                  <div key={index} className="text-sm text-slate-300">
+                    • {reason}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+            <div className="mb-4 flex items-center gap-2">
+              <Brain className="h-5 w-5 text-cyan-300" />
+              <h2 className="text-xl font-semibold text-white">AI decision details</h2>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card
+                label="Risk model"
+                value={
+                  aiInsight?.riskModelSource === "trained_model" ||
+                  aiInsight?.modelSource === "trained_model"
+                    ? "Trained model"
+                    : "Fallback rules"
+                }
+                icon={<Brain className="h-5 w-5" />}
+              />
+              <Card
+                label="Fraud model"
+                value={
+                  aiInsight?.fraudModelSource === "trained_model"
+                    ? "Trained model"
+                    : "Fallback rules"
+                }
+                icon={<Bot className="h-5 w-5" />}
+              />
+              <Card
+                label="Predicted risk"
+                value={currentClaim?.risk ? capitalize(currentClaim.risk) : "-"}
+                icon={<Cpu className="h-5 w-5" />}
+              />
+              <Card
+                label="Fraud screening"
+                value={currentClaim?.fraudFlag ? "Manual review" : "Auto process"}
+                icon={<ShieldCheck className="h-5 w-5" />}
+              />
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+              <div className="text-sm font-medium text-white">Model input summary</div>
+              <div className="mt-2 text-slate-300">
+                {aiInsight?.inputSummary || "No model input summary available."}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
             <h2 className="text-xl font-semibold text-white">Coverage terms</h2>
 
             <div className="mt-4 space-y-3">
@@ -165,6 +301,7 @@ function Policy({ worker }: PolicyProps) {
               <ReasonLine text={`Your weekly premium is ₹${policy.weeklyPremium} and your maximum protection is ₹${policy.protection}.`} />
               <ReasonLine text={`This policy is active for the saved work profile in ${worker.city}, ${worker.zone}.`} />
               <ReasonLine text={`Your current renewal date is ${formatDate(policy.renewalDate)}.`} />
+              <ReasonLine text={`The current pricing mode is ${pricingModeLabel.toLowerCase()}.`} />
             </div>
           </div>
         </div>

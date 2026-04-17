@@ -15,6 +15,12 @@ type ClaimData = {
       predictedRisk?: string;
       predictedFraud?: boolean;
       inputSummary?: string;
+      modelSource?: string;
+      trainedAt?: string;
+      riskModelSource?: string;
+      riskTrainedAt?: string;
+      fraudModelSource?: string;
+      fraudTrainedAt?: string;
     };
   };
   planInfo: {
@@ -22,7 +28,11 @@ type ClaimData = {
     premium: number;
     protection: number;
     badge: string;
+    pricingMode?: string;
+    pricingReasons?: string[];
+    basePremium?: number;
   };
+  currentScenario?: string;
 };
 
 export function useClaimData(deps: unknown[] = []) {
@@ -30,22 +40,40 @@ export function useClaimData(deps: unknown[] = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const depKey = JSON.stringify(deps);
+  const scenario = typeof deps[0] === "string" ? deps[0] : "";
+
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<ClaimData>("/claims/current");
-        setData(res);
+        const path = scenario
+          ? `/claims/current?scenario=${encodeURIComponent(scenario)}`
+          : "/claims/current";
+        const res = await apiFetch<ClaimData>(path);
+        if (!cancelled) {
+          setData(res);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load claim data.");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load claim data.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     load();
-  }, deps);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [depKey, scenario]);
 
   return { data, loading, error };
 }

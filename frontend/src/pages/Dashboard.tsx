@@ -10,6 +10,10 @@ import {
   ArrowRight,
   Clock3,
   CloudSun,
+  Brain,
+  Bot,
+  ShieldAlert,
+  Cpu,
 } from "lucide-react";
 import type { ScenarioKey } from "../services/mockData";
 import {
@@ -50,10 +54,24 @@ function Dashboard({
   const claim = claimData?.claim;
   const planInfo = claimData?.planInfo;
 
+  const aiInsight = claim?.aiInsight as
+    | {
+        predictedRisk?: string;
+        predictedFraud?: boolean;
+        inputSummary?: string;
+        modelSource?: string;
+        trainedAt?: string;
+        riskModelSource?: string;
+        riskTrainedAt?: string;
+        fraudModelSource?: string;
+        fraudTrainedAt?: string;
+      }
+    | undefined;
+
   const statusLabel = useMemo(() => {
     if (!claim) return "";
     return getEarnabilityLabel(claim.score);
-  }, [claim, worker.language]);
+  }, [claim]);
 
   const statusTone = useMemo(() => {
     if (!claim) return "default";
@@ -71,12 +89,12 @@ function Dashboard({
 
   const payoutText = useMemo(() => {
     if (!claim) return "";
-   return getPayoutStatusText(
-  worker.language,
-  (["none", "checking", "approved", "review"].includes(claim.payoutStatus)
-    ? claim.payoutStatus
-    : "none") as "none" | "checking" | "approved" | "review",
-);
+    return getPayoutStatusText(
+      worker.language,
+      (["none", "checking", "approved", "review"].includes(claim.payoutStatus)
+        ? claim.payoutStatus
+        : "none") as "none" | "checking" | "approved" | "review",
+    );
   }, [claim, worker.language]);
 
   const payoutTone = useMemo(() => {
@@ -220,6 +238,28 @@ function Dashboard({
       tone: "good" as const,
     };
   }, [scenario, worker.shift, simpleMode]);
+
+  const monitoringSummary = useMemo(() => {
+    const schedulerActivity = activityItems.find((item) =>
+      item.title.toLowerCase().includes("scheduler checked conditions"),
+    );
+    const autoUpdateActivity = activityItems.find((item) =>
+      item.title.toLowerCase().includes("scenario auto-updated by scheduler"),
+    );
+
+    return {
+      lastCheck:
+        schedulerActivity?.detail ||
+        (simpleMode
+          ? "Auto-checks are running in the background."
+          : "Background monitoring is checking your live conditions automatically."),
+      lastAutoUpdate:
+        autoUpdateActivity?.detail ||
+        (simpleMode
+          ? "No recent automatic change."
+          : "No recent automatic scenario change was needed."),
+    };
+  }, [activityItems, simpleMode]);
 
   if (loading || !claim || !planInfo) {
     return (
@@ -372,6 +412,91 @@ function Dashboard({
 
             <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
               <div className="mb-6 flex items-center justify-between gap-3">
+                <h3 className="text-2xl font-semibold text-white">
+                  {simpleMode ? "AI details" : "AI decision details"}
+                </h3>
+                <StatusPill
+                  label={
+                    aiInsight?.riskModelSource === "trained_model" ||
+                    aiInsight?.fraudModelSource === "trained_model" ||
+                    aiInsight?.modelSource === "trained_model"
+                      ? "Model active"
+                      : "Fallback safe mode"
+                  }
+                  tone={
+                    aiInsight?.riskModelSource === "trained_model" ||
+                    aiInsight?.fraudModelSource === "trained_model" ||
+                    aiInsight?.modelSource === "trained_model"
+                      ? "good"
+                      : "warn"
+                  }
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <InfoCard
+                  label="Risk model"
+                  value={
+                    aiInsight?.riskModelSource === "trained_model" ||
+                    aiInsight?.modelSource === "trained_model"
+                      ? "Trained model"
+                      : "Fallback rules"
+                  }
+                  subtext={claim.risk ? `Predicted ${claim.risk} risk` : "Risk prediction"}
+                  icon={<Brain className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Risk score"
+                  value={`${claim.score}/100`}
+                  subtext="Used for earnability and payout logic"
+                  icon={<Cpu className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Fraud decision"
+                  value={claim.fraudFlag ? "Manual review" : "Auto process"}
+                  subtext={
+                    aiInsight?.fraudModelSource === "trained_model"
+                      ? "Trained fraud model"
+                      : "Fallback fraud logic"
+                  }
+                  icon={<ShieldAlert className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Predicted fraud"
+                  value={claim.fraudFlag ? "Review needed" : "No fraud signal"}
+                  subtext="Fraud screening result"
+                  icon={<Bot className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Live monitoring"
+                  value="Scheduler active"
+                  subtext="Background checks are running"
+                  icon={<Activity className="h-5 w-5" />}
+                />
+                <InfoCard
+                  label="Last auto-check"
+                  value={scenario.toUpperCase()}
+                  subtext="Current live scenario"
+                  icon={<CloudSun className="h-5 w-5" />}
+                />
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                <div className="text-sm font-medium text-white">
+                  {simpleMode ? "Why the app decided this" : "Why the app made this decision"}
+                </div>
+                <div className="mt-3 space-y-2">
+                  {claim.reasons.slice(0, 4).map((reason, index) => (
+                    <div key={index} className="text-sm text-slate-300">
+                      • {reason}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
+              <div className="mb-6 flex items-center justify-between gap-3">
                 <h3 className="text-2xl font-semibold text-white">Your profile</h3>
                 <StatusPill
                   label={
@@ -484,6 +609,30 @@ function Dashboard({
               <div className="mb-4 flex items-center gap-2 text-slate-300">
                 <CloudSun className="h-5 w-5" />
                 <h3 className="text-xl font-semibold text-white">
+                  {simpleMode ? "Live monitoring" : "Live monitoring summary"}
+                </h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="text-sm font-medium text-white">Last check</div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {monitoringSummary.lastCheck}
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="text-sm font-medium text-white">Last auto-update</div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    {monitoringSummary.lastAutoUpdate}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10">
+              <div className="mb-4 flex items-center gap-2 text-slate-300">
+                <CloudSun className="h-5 w-5" />
+                <h3 className="text-xl font-semibold text-white">
                   {simpleMode ? "Next shift" : "Next shift outlook"}
                 </h3>
               </div>
@@ -514,7 +663,7 @@ function Dashboard({
               <p className="mt-3 text-slate-300">
                 {simpleMode
                   ? "Your plan updates with current work conditions."
-                  : "Your plan stays in sync with live work conditions and payout status."}
+                  : "Your plan stays in sync with live work conditions, ML decisions, and payout status."}
               </p>
             </div>
           </div>

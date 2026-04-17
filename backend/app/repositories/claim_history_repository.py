@@ -14,23 +14,37 @@ def _now_iso():
     return _now().isoformat()
 
 
-def _receipt_ref():
-    return f"PAY-{uuid4().hex[:10].upper()}"
+def _receipt_ref(prefix: str = "PAY"):
+    return f"{prefix}-{uuid4().hex[:10].upper()}"
 
 
 def _claim_number():
     return f"CLM-{uuid4().hex[:10].upper()}"
 
 
-def find_recent_duplicate_claim(user_id: str, scenario: str, minutes: int = 30):
+def find_recent_duplicate_claim(user_id: str, scenario: str, minutes: int = 5):
     cutoff = (_now() - timedelta(minutes=minutes)).isoformat()
-    return claim_history_collection.find_one(
-        {
-            "userId": user_id,
-            "scenario": scenario,
-            "createdAt": {"$gte": cutoff},
-        }
+    items = list(
+        claim_history_collection.find(
+            {
+                "userId": user_id,
+                "scenario": scenario,
+                "createdAt": {"$gte": cutoff},
+            }
+        ).sort("createdAt", -1)
     )
+
+    for item in items:
+        lifecycle_status = item.get("lifecycleStatus")
+        payout_status = item.get("claim", {}).get("payoutStatus")
+
+        # Allow a fresh demo cycle if the recent claim is already fully paid.
+        if lifecycle_status == "paid" or payout_status == "paid":
+            continue
+
+        return item
+
+    return None
 
 
 def add_claim_history(*, user_id: str, scenario: str, claim: dict, plan_info: dict):
@@ -41,7 +55,7 @@ def add_claim_history(*, user_id: str, scenario: str, claim: dict, plan_info: di
     now = _now_iso()
     payout_status = claim.get("payoutStatus", "none")
     payout_reference = _receipt_ref() if payout_status in {"approved", "paid"} else None
-    payout_channel = "UPI" if payout_status in {"approved", "paid"} else None
+    payout_channel = "UPI Simulator" if payout_status in {"approved", "paid"} else None
     payout_timestamp = now if payout_status == "paid" else None
 
     stages = [
@@ -150,6 +164,79 @@ def add_manual_claim_history(
     return doc, False
 
 
+def mark_claim_as_paid(user_id: str, claim_id: str | None = None):
+    items = list(
+        claim_history_collection.find({"userId": user_id}).sort("createdAt", -1).limit(20)
+    )
+
+    target = None
+    if claim_id:
+        for item in items:
+            if str(item["_id"]) == claim_id:
+                target = item
+                break
+    else:
+        for item in items:
+            if item.get("lifecycleStatus") == "approved":
+                target = item
+                break
+
+    if not target:
+        return None, "No approved claim found for payout."
+
+    payout_reference = _receipt_ref("UPI")
+    payout_timestamp = _now_iso()
+
+    timeline = target.get("timeline", [])
+    updated_timeline = []
+    paid_found = False
+
+    for stage in timeline:
+        if stage.get("label") == "Paid":
+            updated_timeline.append(
+                {
+                    **stage,
+                    "status": "done",
+                    "time": payout_timestamp,
+                }
+            )
+            paid_found = True
+        else:
+            updated_timeline.append(stage)
+
+    if not paid_found:
+        updated_timeline.append(
+            {
+                "label": "Paid",
+                "status": "done",
+                "time": payout_timestamp,
+            }
+        )
+
+    claim = target.get("claim", {})
+    claim["payoutStatus"] = "paid"
+    claim["workerMessage"] = "Your payout has been sent successfully."
+    claim.setdefault("aiInsight", {})
+
+    claim_history_collection.update_one(
+        {"_id": target["_id"]},
+        {
+            "$set": {
+                "claim": claim,
+                "lifecycleStatus": "paid",
+                "timeline": updated_timeline,
+                "payoutReference": payout_reference,
+                "payoutChannel": "UPI Simulator",
+                "payoutTimestamp": payout_timestamp,
+                "updatedAt": _now_iso(),
+            }
+        },
+    )
+
+    updated = claim_history_collection.find_one({"_id": target["_id"]})
+    return updated, None
+
+
 def get_claim_history_for_user(user_id: str, limit: int = 10):
     items = list(
         claim_history_collection.find({"userId": user_id})
@@ -171,7 +258,7 @@ def get_claim_history_for_user(user_id: str, limit: int = 10):
                 "payoutStatus": claim.get("payoutStatus", ""),
                 "lifecycleStatus": item.get("lifecycleStatus", ""),
                 "payout": claim.get("payout", 0),
-                "planName": plan_info.get("name", ""),
+                "planName": plan_info.get("name", plan_info.get("planName", "")),
                 "timeline": item.get("timeline", []),
                 "payoutReference": item.get("payoutReference"),
                 "payoutChannel": item.get("payoutChannel"),

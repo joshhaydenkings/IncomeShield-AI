@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from ..deps import get_current_user
 from ..repositories.activity_repository import add_activity
 from ..repositories.claim_history_repository import (
     add_manual_claim_history,
     get_claim_history_for_user,
+    mark_claim_as_paid,
 )
 from ..repositories.user_state_repository import get_current_scenario_for_user
 from ..schemas_manual_claim import ManualClaimRequest
@@ -14,20 +16,28 @@ from ..services.plan_service import get_plan_by_name
 router = APIRouter()
 
 
+class ReleasePayoutRequest(BaseModel):
+    claimId: str | None = None
+
+
 @router.get("/claims/current")
-def get_current_claim(current_user: dict = Depends(get_current_user)):
+def get_current_claim(
+    current_user: dict = Depends(get_current_user),
+    scenario: str | None = Query(default=None),
+):
     user_id = str(current_user["_id"])
-    scenario = get_current_scenario_for_user(user_id)
-    claim_data = build_claim(current_user, scenario)
-    return claim_data
+    active_scenario = scenario or get_current_scenario_for_user(user_id)
+    claim_data = build_claim(current_user, active_scenario)
+    return {
+        **claim_data,
+        "currentScenario": active_scenario,
+    }
 
 
 @router.get("/claims/history")
 def get_claim_history(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
-    return {
-        "items": get_claim_history_for_user(user_id)
-    }
+    return {"items": get_claim_history_for_user(user_id)}
 
 
 @router.post("/claims/manual")
@@ -37,7 +47,11 @@ def submit_manual_claim(
 ):
     user_id = str(current_user["_id"])
     scenario = get_current_scenario_for_user(user_id)
-    plan_info = get_plan_by_name(current_user.get("plan", "Core"), worker=current_user, scenario=scenario)
+    plan_info = get_plan_by_name(
+        current_user.get("plan", "Core"),
+        worker=current_user,
+        scenario=scenario,
+    )
 
     saved_claim, duplicate_blocked = add_manual_claim_history(
         user_id=user_id,
@@ -59,4 +73,31 @@ def submit_manual_claim(
         "message": "Manual claim submitted successfully",
         "duplicateBlocked": False,
         "claimNumber": saved_claim.get("claimNumber"),
+    }
+
+
+@router.post("/claims/release-payout")
+def release_payout(
+    payload: ReleasePayoutRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = str(current_user["_id"])
+
+    updated_claim, err = mark_claim_as_paid(user_id=user_id, claim_id=payload.claimId)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+
+    add_activity(
+        "Simulated UPI payout sent",
+        f"{updated_claim.get('payoutReference')} via {updated_claim.get('payoutChannel')}",
+        user_id,
+    )
+
+    return {
+        "message": "Simulated UPI payout sent successfully.",
+        "claimId": str(updated_claim["_id"]),
+        "payoutReference": updated_claim.get("payoutReference"),
+        "payoutChannel": updated_claim.get("payoutChannel"),
+        "payoutTimestamp": updated_claim.get("payoutTimestamp"),
+        "lifecycleStatus": updated_claim.get("lifecycleStatus"),
     }

@@ -32,22 +32,36 @@ export function useClaimHistory(deps: unknown[] = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const depKey = JSON.stringify(deps);
+
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       try {
         setLoading(true);
         setError("");
         const res = await apiFetch<{ items: ClaimHistoryItem[] }>("/claims/history");
-        setItems(res.items ?? []);
+        if (!cancelled) {
+          setItems(res.items ?? []);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load claim history.");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load claim history.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     load();
-  }, deps);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [depKey]);
 
   return { items, loading, error };
 }

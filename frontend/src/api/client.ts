@@ -1,7 +1,7 @@
 import { getToken } from "../utils/auth";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || "http://127.0.0.1:8000";
+  import.meta.env.VITE_API_BASE_URL?.trim() || "https://incomeshield-ai-w7lt.onrender.com";
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
