@@ -74,9 +74,16 @@ function App() {
         }
 
         const me = await getMe(savedToken);
-        setTokenState(savedToken);
-        setWorker(mapUserToWorker(me.user));
-        setPage(me.user.profileCompleted ? "dashboard" : "onboarding");
+        if (me.user.profileCompleted) {
+          setTokenState(savedToken);
+          setWorker(mapUserToWorker(me.user));
+          setPage("dashboard");
+        } else {
+          clearToken();
+          setTokenState(null);
+          setWorker(null);
+          setPage("signup");
+        }
       } catch (err) {
         clearToken();
         setTokenState(null);
