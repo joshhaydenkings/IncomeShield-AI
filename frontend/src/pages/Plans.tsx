@@ -14,7 +14,7 @@ type PlansProps = {
 };
 
 function Plans({ worker, onUpdatePlan, simpleMode }: PlansProps) {
-  const { speak } = useVoice(worker.language);
+  const { speak, stop, isSpeaking } = useVoice(worker.language);
   const { plans, loading, error, currentScenario } = usePlans([
     worker.city,
     worker.zone,
@@ -59,7 +59,9 @@ function Plans({ worker, onUpdatePlan, simpleMode }: PlansProps) {
           actions={
             <VoiceButton
               label={tr(worker.language, "hearThis")}
-              onClick={() => speak(voiceText)}
+              onSpeak={() => speak(voiceText)}
+              onStop={stop}
+              isSpeaking={isSpeaking}
             />
           }
         />

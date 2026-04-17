@@ -42,7 +42,7 @@ function Admin({
   const { data: review, loading, error } = useAdminReview([scenario]);
   const { data: claimData } = useClaimData([scenario]);
   const { items: history } = useClaimHistory([scenario]);
-  const { speak } = useVoice(worker.language);
+  const { speak, stop, isSpeaking } = useVoice(worker.language);
 
   const currentClaim = claimData?.claim;
   const latestHistory = history[0];
@@ -191,7 +191,12 @@ function Admin({
           title={simpleMode ? "Admin review" : "Fraud and payout control center"}
           actions={
             <>
-              <VoiceButton label="Hear this" onClick={() => speak(voiceText)} />
+              <VoiceButton
+                label="Hear this"
+                onSpeak={() => speak(voiceText)}
+                onStop={stop}
+                isSpeaking={isSpeaking}
+              />
               <button
                 onClick={onBackToDashboard}
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-medium text-slate-200 transition hover:bg-white/10"

@@ -2,7 +2,14 @@ import { Settings } from "lucide-react";
 import { tr } from "../services/translations";
 import type { WorkerProfile } from "../types";
 
-type Page = "dashboard" | "plans" | "alerts" | "claims" | "admin";
+type Page =
+  | "dashboard"
+  | "plans"
+  | "alerts"
+  | "claims"
+  | "admin"
+  | "policy"
+  | "settings";
 
 type AppShellProps = {
   worker: WorkerProfile;
@@ -64,13 +71,21 @@ function AppShell({
             ))}
             <button
               onClick={onOpenPolicy}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 font-medium text-slate-200 transition hover:bg-white/10"
+              className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 font-medium transition ${
+                page === "policy"
+                  ? "bg-white text-[#07111f]"
+                  : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+              }`}
             >
               Policy
             </button>
             <button
               onClick={onOpenSettings}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 font-medium text-slate-200 transition hover:bg-white/10"
+              className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 font-medium transition ${
+                page === "settings"
+                  ? "bg-white text-[#07111f]"
+                  : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+              }`}
             >
               <Settings className="h-4 w-4" />
               Settings
@@ -124,13 +139,21 @@ function AppShell({
           ) : null}
           <button
             onClick={onOpenPolicy}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+            className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+              page === "policy"
+                ? "bg-white text-[#07111f]"
+                : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+            }`}
           >
             Policy
           </button>
           <button
             onClick={onOpenSettings}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+            className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
+              page === "settings"
+                ? "bg-white text-[#07111f]"
+                : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
+            }`}
           >
             Settings
           </button>

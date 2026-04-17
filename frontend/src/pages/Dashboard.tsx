@@ -47,7 +47,7 @@ function Dashboard({
   onGoToAdmin,
   simpleMode,
 }: DashboardProps) {
-  const { speak } = useVoice(worker.language);
+  const { speak, stop, isSpeaking } = useVoice(worker.language);
   const { data: claimData, loading, error } = useClaimData([scenario]);
   const { items: activityItems } = useActivity([scenario, worker.plan]);
 
@@ -300,7 +300,9 @@ function Dashboard({
             <>
               <VoiceButton
                 label={tr(worker.language, "hearThis")}
-                onClick={() => speak(voiceText)}
+                onSpeak={() => speak(voiceText)}
+                onStop={stop}
+                isSpeaking={isSpeaking}
               />
               <button
                 onClick={onGoToPlans}

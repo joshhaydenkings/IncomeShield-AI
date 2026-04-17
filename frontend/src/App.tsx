@@ -306,7 +306,7 @@ function App() {
   }
 
   const shellPage: InnerPage =
-    page === "admin" || page === "settings" || page === "policy"
+    page === "admin"
       ? "dashboard"
       : (page as InnerPage);
 

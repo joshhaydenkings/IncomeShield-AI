@@ -220,9 +220,8 @@ function Onboarding({ onContinue }: OnboardingProps) {
               </div>
             </div>
 
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-white">Select plan</h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="hidden">
+              <div className="hidden mt-4 grid gap-4 md:grid-cols-3">
                 {plans.map((plan) => (
                   <button
                     key={plan.name}
@@ -269,7 +268,7 @@ function Onboarding({ onContinue }: OnboardingProps) {
               </div>
             </div>
 
-            <div className="mt-8 rounded-3xl bg-white/5 p-5 ring-1 ring-white/10">
+            <div className="hidden">
               <div className="text-sm font-medium text-slate-300">Estimated weekly premium</div>
               <div className="mt-2 text-4xl font-bold text-white">
                 ₹{premiumPreview}/week

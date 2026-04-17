@@ -43,7 +43,7 @@ function Alerts({
   onUseLiveScenario,
   simpleMode,
 }: AlertsProps) {
-  const { speak } = useVoice(worker.language);
+  const { speak, stop, isSpeaking } = useVoice(worker.language);
   const { data: claimData, loading, error } = useClaimData([scenario]);
   const { items: activityItems } = useActivity([scenario, worker.plan]);
   const [liveSyncMessage, setLiveSyncMessage] = useState("");
@@ -180,7 +180,9 @@ function Alerts({
             <>
               <VoiceButton
                 label={tr(worker.language, "hearThis")}
-                onClick={() => speak(voiceText)}
+                onSpeak={() => speak(voiceText)}
+                onStop={stop}
+                isSpeaking={isSpeaking}
               />
               <button
                 onClick={handleLiveSync}

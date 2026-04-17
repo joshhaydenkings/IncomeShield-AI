@@ -26,7 +26,20 @@ function Login({ onLogin, onGoToSignup }: LoginProps) {
 
   return (
     <div className="grid min-h-screen place-items-center bg-[#07111f] px-4">
-      <div className="w-full max-w-md rounded-3xl bg-[#0f1e33] p-8 shadow-sm ring-1 ring-white/10">
+      <div className="w-full max-w-md">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <img
+            src="/incomeshield-logo.svg"
+            alt="IncomeShield AI logo"
+            className="h-16 w-16 drop-shadow-[0_0_24px_rgba(34,211,238,0.22)]"
+          />
+          <div className="mt-3 text-2xl font-bold tracking-tight text-white">
+            Income<span className="text-cyan-400">Shield</span>
+            <span className="ml-2 text-sky-400">AI</span>
+          </div>
+        </div>
+
+        <div className="w-full rounded-3xl bg-[#0f1e33]/95 p-8 shadow-sm ring-1 ring-white/10">
         <div className="mb-6">
           <div className="text-3xl font-bold text-white">Sign in</div>
           <div className="mt-2 text-slate-400">Access your saved IncomeShield account.</div>
@@ -78,6 +91,7 @@ function Login({ onLogin, onGoToSignup }: LoginProps) {
         >
           Create account
         </button>
+        </div>
       </div>
     </div>
   );

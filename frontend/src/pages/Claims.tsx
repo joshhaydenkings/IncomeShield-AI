@@ -27,7 +27,7 @@ type ClaimsProps = {
 };
 
 function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
-  const { speak } = useVoice(worker.language);
+  const { speak, stop, isSpeaking } = useVoice(worker.language);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data, loading, error } = useClaimData([scenario, refreshKey]);
@@ -160,7 +160,9 @@ function Claims({ worker, scenario, simpleMode }: ClaimsProps) {
           actions={
             <VoiceButton
               label={tr(worker.language, "hearThis")}
-              onClick={() => speak(voiceText)}
+              onSpeak={() => speak(voiceText)}
+              onStop={stop}
+              isSpeaking={isSpeaking}
             />
           }
         />

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 
 const languageMap: Record<string, string> = {
   en: "en-US",
@@ -11,12 +11,18 @@ function wait(ms: number) {
 }
 
 export function useVoice(language: string = "en") {
+  const runIdRef = useRef(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   const speak = useCallback(
     async (input: string | string[]) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         return;
       }
 
+      runIdRef.current += 1;
+      const runId = runIdRef.current;
+      setIsSpeaking(true);
       window.speechSynthesis.cancel();
 
       const parts = Array.isArray(input)
@@ -26,21 +32,40 @@ export function useVoice(language: string = "en") {
             .map((part) => part.trim())
             .filter(Boolean);
 
-      for (const part of parts) {
-        await new Promise<void>((resolve) => {
-          const utterance = new SpeechSynthesisUtterance(part);
-          utterance.lang = languageMap[language] || "en-US";
-          utterance.rate = 0.92;
-          utterance.pitch = 1;
-          utterance.volume = 1;
+      try {
+        for (const part of parts) {
+          if (runIdRef.current !== runId) {
+            break;
+          }
 
-          utterance.onend = () => resolve();
-          utterance.onerror = () => resolve();
+          await new Promise<void>((resolve) => {
+            const utterance = new SpeechSynthesisUtterance(part);
+            utterance.lang = languageMap[language] || "en-US";
+            utterance.rate = 0.92;
+            utterance.pitch = 1;
+            utterance.volume = 1;
 
-          window.speechSynthesis.speak(utterance);
-        });
+            utterance.onend = () => resolve();
+            utterance.onerror = () => resolve();
 
-        await wait(220);
+            if (runIdRef.current !== runId) {
+              resolve();
+              return;
+            }
+
+            window.speechSynthesis.speak(utterance);
+          });
+
+          if (runIdRef.current !== runId) {
+            break;
+          }
+
+          await wait(220);
+        }
+      } finally {
+        if (runIdRef.current === runId) {
+          setIsSpeaking(false);
+        }
       }
     },
     [language]
@@ -50,8 +75,10 @@ export function useVoice(language: string = "en") {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       return;
     }
+    runIdRef.current += 1;
+    setIsSpeaking(false);
     window.speechSynthesis.cancel();
   }, []);
 
-  return { speak, stop };
+  return { speak, stop, isSpeaking };
 }
