@@ -48,8 +48,12 @@ function AppShell({
       <div className="sticky top-0 z-30 border-b border-white/10 bg-[#0b1728]/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#13233b] text-lg font-bold text-white ring-1 ring-white/10">
-              IA
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#13233b] ring-1 ring-white/10">
+              <img
+                src="/incomeshield-logo.svg"
+                alt="IncomeShield AI logo"
+                className="h-7 w-7 object-contain"
+              />
             </div>
 
             <div>

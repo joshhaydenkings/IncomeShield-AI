@@ -40,39 +40,46 @@ def _map_live_data_to_scenario(weather: dict, air: dict) -> tuple[str, str]:
 
 
 def geocode_public_location(city: str, zone: str | None = None):
-    query = city.strip()
+    queries: list[str] = []
+    city_query = city.strip()
+
     if zone and zone.strip():
-        query = f"{zone.strip()}, {city.strip()}"
+        queries.append(f"{zone.strip()}, {city_query}")
+    queries.append(city_query)
 
-    url = (
-        "https://geocoding-api.open-meteo.com/v1/search"
-        f"?name={quote(query)}&count=1&language=en&format=json"
-    )
+    last_error: str | None = None
 
-    try:
-        data = _fetch_json(url)
-    except Exception as exc:
+    for query in queries:
+        url = (
+            "https://geocoding-api.open-meteo.com/v1/search"
+            f"?name={quote(query)}&count=1&language=en&format=json"
+        )
+
+        try:
+            data = _fetch_json(url)
+        except Exception as exc:
+            last_error = f"Geocoding failed: {exc}"
+            continue
+
+        results = data.get("results") or []
+        if not results:
+            last_error = f"Could not find public location data for {query}."
+            continue
+
+        match = results[0]
         return {
-            "error": True,
-            "reason": f"Geocoding failed: {exc}",
+            "error": False,
+            "name": match.get("name", query),
+            "latitude": match.get("latitude"),
+            "longitude": match.get("longitude"),
+            "admin1": match.get("admin1"),
+            "country": match.get("country"),
+            "queryUsed": query,
         }
 
-    results = data.get("results") or []
-    if not results:
-        return {
-            "error": True,
-            "reason": f"Could not find public location data for {query}.",
-        }
-
-    match = results[0]
     return {
-        "error": False,
-        "name": match.get("name", query),
-        "latitude": match.get("latitude"),
-        "longitude": match.get("longitude"),
-        "admin1": match.get("admin1"),
-        "country": match.get("country"),
-        "queryUsed": query,
+        "error": True,
+        "reason": last_error or f"Could not find public location data for {city_query}.",
     }
 
 

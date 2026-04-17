@@ -263,6 +263,7 @@ function App() {
     } catch (err) {
       console.error(err);
       setError("Failed to sync live scenario.");
+      throw err;
     }
   };
 

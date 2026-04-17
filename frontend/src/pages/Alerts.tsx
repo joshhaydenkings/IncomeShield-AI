@@ -97,7 +97,9 @@ function Alerts({
         `Live data synced using "${res.queryUsed}". Matched location: ${res.location.name}. ${res.reason}`,
       );
     } catch (err) {
-      setLiveSyncMessage("Could not sync live public data right now.");
+      if (!onUseLiveScenario) {
+        setLiveSyncMessage("Could not sync live public data right now.");
+      }
       console.error(err);
     } finally {
       setSyncing(false);
