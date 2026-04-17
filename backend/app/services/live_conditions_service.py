@@ -111,6 +111,52 @@ def get_live_weather_and_aqi(latitude: float, longitude: float):
         }
 
 
+def get_live_condition_result_by_coordinates(
+    latitude: float,
+    longitude: float,
+    location_name: str,
+    query_used: str | None = None,
+    admin1: str | None = None,
+    country: str | None = None,
+):
+    live_data = get_live_weather_and_aqi(latitude, longitude)
+    if live_data.get("error"):
+        return {
+            "error": True,
+            "reason": live_data["reason"],
+            "mappedScenario": "normal",
+            "queryUsed": query_used or location_name,
+            "location": {
+                "name": location_name,
+                "latitude": latitude,
+                "longitude": longitude,
+                "admin1": admin1,
+                "country": country,
+            },
+        }
+
+    mapped_scenario, reason = _map_live_data_to_scenario(
+        live_data["weather"],
+        live_data["air"],
+    )
+
+    return {
+        "error": False,
+        "mappedScenario": mapped_scenario,
+        "reason": reason,
+        "queryUsed": query_used or location_name,
+        "location": {
+            "name": location_name,
+            "latitude": latitude,
+            "longitude": longitude,
+            "admin1": admin1,
+            "country": country,
+        },
+        "weather": live_data["weather"],
+        "air": live_data["air"],
+    }
+
+
 def get_live_condition_result(city: str, zone: str | None = None):
     location = geocode_public_location(city, zone)
     if location.get("error"):
@@ -126,35 +172,11 @@ def get_live_condition_result(city: str, zone: str | None = None):
             },
         }
 
-    live_data = get_live_weather_and_aqi(location["latitude"], location["longitude"])
-    if live_data.get("error"):
-        return {
-            "error": True,
-            "reason": live_data["reason"],
-            "mappedScenario": "normal",
-            "queryUsed": location["queryUsed"],
-            "location": {
-                "name": location["name"],
-                "latitude": location["latitude"],
-                "longitude": location["longitude"],
-            },
-        }
-
-    mapped_scenario, reason = _map_live_data_to_scenario(
-        live_data["weather"],
-        live_data["air"],
+    return get_live_condition_result_by_coordinates(
+        latitude=location["latitude"],
+        longitude=location["longitude"],
+        location_name=location["name"],
+        query_used=location["queryUsed"],
+        admin1=location.get("admin1"),
+        country=location.get("country"),
     )
-
-    return {
-        "error": False,
-        "mappedScenario": mapped_scenario,
-        "reason": reason,
-        "queryUsed": location["queryUsed"],
-        "location": {
-            "name": location["name"],
-            "latitude": location["latitude"],
-            "longitude": location["longitude"],
-        },
-        "weather": live_data["weather"],
-        "air": live_data["air"],
-    }

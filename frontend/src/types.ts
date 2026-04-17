@@ -5,6 +5,14 @@ export type WorkerProfile = {
   name: string;
   city: string;
   zone: string;
+  pincode?: string;
+  normalized_location?: string;
+  resolved_name?: string;
+  resolved_admin1?: string;
+  resolved_country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string;
   shift: string;
   workerType: string;
   language: Language;

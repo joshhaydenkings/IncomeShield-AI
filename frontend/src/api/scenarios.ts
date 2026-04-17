@@ -33,7 +33,7 @@ export async function useLiveScenario() {
     currentScenario?: ScenarioKey;
     availableScenarios?: ScenarioOption[];
     message?: string;
-  }>("/scenarios/live", {
+  }>("/scenarios/sync-live", {
     method: "POST",
   });
 }

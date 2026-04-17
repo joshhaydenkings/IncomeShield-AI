@@ -23,7 +23,7 @@ export async function syncLiveScenario() {
       aqi?: number;
       pm25?: number;
     };
-  }>("/scenarios/live", {
+  }>("/scenarios/sync-live", {
     method: "POST",
   });
 }

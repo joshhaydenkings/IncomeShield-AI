@@ -1,5 +1,6 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || "http://127.0.0.1:8000";
+import { getApiBaseUrl } from "../utils/apiBase";
+
+const API_BASE_URL = getApiBaseUrl();
 
 type User = {
   id: string;
@@ -7,6 +8,14 @@ type User = {
   email: string;
   city: string;
   zone: string;
+  pincode?: string;
+  normalized_location?: string;
+  resolved_name?: string;
+  resolved_admin1?: string;
+  resolved_country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string;
   shift: string;
   workerType: string;
   language: string;
@@ -36,7 +45,18 @@ async function apiFetch<T>(path: string, options?: RequestInit, token?: string):
   }
 
   if (!response.ok) {
-    throw new Error(typeof data === "string" ? data : JSON.stringify(data));
+    if (typeof data === "string") {
+      throw new Error(data || `Request failed: ${response.status}`);
+    }
+
+    if (data && typeof data === "object" && "detail" in data) {
+      const detail = (data as { detail?: unknown }).detail;
+      if (typeof detail === "string" && detail.trim()) {
+        throw new Error(detail);
+      }
+    }
+
+    throw new Error(`Request failed: ${response.status}`);
   }
 
   return data as T;
@@ -72,6 +92,7 @@ export async function updateProfile(
   payload: {
     city: string;
     zone: string;
+    pincode?: string;
     shift: string;
     workerType: string;
     language: string;

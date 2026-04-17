@@ -29,12 +29,18 @@ type Page =
   | "settings"
   | "policy";
 
-type InnerPage = "dashboard" | "plans" | "alerts" | "claims" | "admin";
-
 function mapUserToWorker(user: {
   name: string;
   city: string;
   zone: string;
+  pincode?: string;
+  normalized_location?: string;
+  resolved_name?: string;
+  resolved_admin1?: string;
+  resolved_country?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  timezone?: string;
   shift: string;
   workerType: string;
   language: string;
@@ -44,6 +50,14 @@ function mapUserToWorker(user: {
     name: user.name,
     city: user.city,
     zone: user.zone,
+    pincode: user.pincode ?? "",
+    normalized_location: user.normalized_location ?? "",
+    resolved_name: user.resolved_name ?? "",
+    resolved_admin1: user.resolved_admin1 ?? "",
+    resolved_country: user.resolved_country ?? "",
+    latitude: user.latitude ?? null,
+    longitude: user.longitude ?? null,
+    timezone: user.timezone ?? "",
     shift: user.shift,
     workerType: user.workerType,
     language: user.language as Language,
@@ -120,6 +134,10 @@ function App() {
     loadScenario();
   }, [token]);
 
+  useEffect(() => {
+    setError("");
+  }, [page]);
+
   const isEnglish = worker?.language === "en";
   const simpleMode = useMemo(() => {
     return isEnglish ? storedSimpleMode : false;
@@ -167,10 +185,10 @@ function App() {
     if (!token) throw new Error("Missing auth token");
 
     try {
-      setError("");
       const res = await updateProfile(token, {
         city: updatedWorker.city,
         zone: updatedWorker.zone,
+        pincode: updatedWorker.pincode ?? "",
         shift: updatedWorker.shift,
         workerType: updatedWorker.workerType,
         language: updatedWorker.language,
@@ -184,11 +202,9 @@ function App() {
         setStoredSimpleMode(false);
         setSimpleMode(false);
       }
-
-      setPage("dashboard");
     } catch (err) {
       console.error(err);
-      setError("Failed to save profile settings.");
+      throw err;
     }
   };
 
@@ -262,7 +278,11 @@ function App() {
       setScenario(syncedScenario);
     } catch (err) {
       console.error(err);
-      setError("Failed to sync live scenario.");
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to sync live scenario.",
+      );
       throw err;
     }
   };
@@ -313,10 +333,8 @@ function App() {
     );
   }
 
-  const shellPage: InnerPage =
-    page === "admin"
-      ? "dashboard"
-      : (page as InnerPage);
+  const shellPage =
+    page === "admin" ? "dashboard" : page;
 
   return (
     <AppShell

@@ -1,7 +1,7 @@
 import { getToken } from "../utils/auth";
+import { getApiBaseUrl } from "../utils/apiBase";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || "https://incomeshield-ai-w7lt.onrender.com";
+const API_BASE_URL = getApiBaseUrl();
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -25,7 +25,18 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   }
 
   if (!response.ok) {
-    throw new Error(typeof data === "string" ? data : JSON.stringify(data));
+    if (typeof data === "string") {
+      throw new Error(data || `Request failed: ${response.status}`);
+    }
+
+    if (data && typeof data === "object" && "detail" in data) {
+      const detail = (data as { detail?: unknown }).detail;
+      if (typeof detail === "string" && detail.trim()) {
+        throw new Error(detail);
+      }
+    }
+
+    throw new Error(`Request failed: ${response.status}`);
   }
 
   return data as T;

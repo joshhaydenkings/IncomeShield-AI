@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -11,11 +13,15 @@ from ..repositories.user_state_repository import (
     set_current_scenario_for_user,
 )
 from ..services.claim_service import build_claim
-from ..services.live_conditions_service import get_live_condition_result
+from ..services.live_conditions_service import (
+    get_live_condition_result,
+    get_live_condition_result_by_coordinates,
+)
 from ..services.plan_service import get_plan_by_name
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 
@@ -105,11 +111,35 @@ def update_current_scenario(
 def update_scenario_from_live_data(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
 
+    latitude = current_user.get("latitude")
+    longitude = current_user.get("longitude")
+    normalized_location = current_user.get("normalized_location")
+    resolved_name = current_user.get("resolved_name")
+    city = current_user.get("city", "")
+    zone = current_user.get("zone")
 
-    result = get_live_condition_result(
-        city=current_user["city"],
-        zone=current_user.get("zone"),
-    )
+    if latitude is not None and longitude is not None:
+        location_name = (
+            normalized_location
+            or resolved_name
+            or ", ".join(part for part in [zone, city] if part)
+            or city
+            or "Saved location"
+        )
+        result = get_live_condition_result_by_coordinates(
+            latitude=float(latitude),
+            longitude=float(longitude),
+            location_name=location_name,
+            query_used=location_name,
+            admin1=current_user.get("resolved_admin1"),
+            country=current_user.get("resolved_country"),
+        )
+    else:
+        result = get_live_condition_result(
+            city=city,
+            zone=zone,
+        )
+
     if result.get("error"):
         raise HTTPException(status_code=404, detail=result.get("reason", "Live sync failed."))
 
@@ -119,42 +149,48 @@ def update_scenario_from_live_data(current_user: dict = Depends(get_current_user
 
 
     set_current_scenario_for_user(user_id, live_scenario)
+    duplicate_blocked = False
 
+    try:
+        plan_info = get_plan_by_name(
+            current_user.get("plan", "Core"),
+            worker=current_user,
+            scenario=live_scenario,
+        )
+        if plan_info:
+            create_or_update_policy_for_user(user_id, plan_info)
+    except Exception:
+        logger.exception("Policy refresh failed during live scenario sync for user %s", user_id)
 
-    plan_info = get_plan_by_name(
-        current_user.get("plan", "Core"),
-        worker=current_user,
-        scenario=live_scenario,
-    )
-    create_or_update_policy_for_user(user_id, plan_info)
-
-
-    add_activity(
-        "Live conditions synced",
-        f"{result['queryUsed']} matched to {result['location']['name']}. {result['reason']}",
-        user_id,
-    )
-
-
-    if previous_scenario != live_scenario:
+    try:
         add_activity(
-            "Scenario auto-updated from live data",
-            f"{previous_scenario} -> {live_scenario}",
+            "Live conditions synced",
+            f"{result['queryUsed']} matched to {result['location']['name']}. {result['reason']}",
             user_id,
         )
 
+        if previous_scenario != live_scenario:
+            add_activity(
+                "Scenario auto-updated from live data",
+                f"{previous_scenario} -> {live_scenario}",
+                user_id,
+            )
+    except Exception:
+        logger.exception("Activity logging failed during live scenario sync for user %s", user_id)
 
-    claim_data = build_claim(current_user, live_scenario)
-    _saved_claim, duplicate_blocked = add_claim_history(
-        user_id=user_id,
-        scenario=live_scenario,
-        claim=claim_data["claim"],
-        plan_info=claim_data["planInfo"],
-    )
+    try:
+        claim_data = build_claim(current_user, live_scenario)
+        _saved_claim, duplicate_blocked = add_claim_history(
+            user_id=user_id,
+            scenario=live_scenario,
+            claim=claim_data["claim"],
+            plan_info=claim_data["planInfo"],
+        )
 
-
-    if duplicate_blocked:
-        add_activity("Duplicate claim blocked", live_scenario, user_id)
+        if duplicate_blocked:
+            add_activity("Duplicate claim blocked", live_scenario, user_id)
+    except Exception:
+        logger.exception("Claim history update failed during live scenario sync for user %s", user_id)
 
 
     return {
