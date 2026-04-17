@@ -517,3 +517,10 @@ It replaces slow, paperwork-heavy claims with an intelligent system that:
 Because for gig workers, resilience is not about replacing damage later.
 
 It is about protecting livelihood when income stops now.
+
+---
+
+## Pitch Deck
+
+Drive Link: https://drive.google.com/file/d/1Z2MV0jbdukysJhyowz8RPWOwh9P_k52Y/view?usp=sharing
+
