@@ -38,7 +38,10 @@ def _sync_current_worker_snapshot(worker: dict) -> None:
             state = {}
 
     state["current_worker"] = serialize_user(worker)
-    APP_STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    APP_STATE_FILE.write_text(
+        json.dumps(state, indent=2, default=str),
+        encoding="utf-8",
+    )
 
 
 @router.get("/worker/current")
@@ -82,7 +85,10 @@ def update_worker_location_route(
     if not updated_user:
         raise HTTPException(status_code=500, detail="Failed to update worker location")
 
-    _sync_current_worker_snapshot(updated_user)
+    try:
+        _sync_current_worker_snapshot(updated_user)
+    except Exception:
+        pass
 
     add_activity(
         "Location updated",

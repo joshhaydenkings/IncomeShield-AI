@@ -32,7 +32,10 @@ def _sync_current_worker_snapshot(worker: dict) -> None:
             state = {}
 
     state["current_worker"] = serialize_user(worker)
-    APP_STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    APP_STATE_FILE.write_text(
+        json.dumps(state, indent=2, default=str),
+        encoding="utf-8",
+    )
 
 
 @router.post("/signup")
@@ -146,7 +149,10 @@ def update_profile(
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to update profile")
 
-    _sync_current_worker_snapshot(updated)
+    try:
+        _sync_current_worker_snapshot(updated)
+    except Exception:
+        pass
 
     return {
         "message": "Profile updated successfully",
