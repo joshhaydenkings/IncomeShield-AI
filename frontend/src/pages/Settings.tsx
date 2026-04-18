@@ -145,11 +145,12 @@ function Settings({ worker, onSave, onBack }: SettingsProps) {
 
         <div className="rounded-3xl bg-[#0f1e33] p-6 shadow-sm ring-1 ring-white/10 md:p-8">
           <div className="grid gap-5 md:grid-cols-2">
-            <Field label="Name (read only)">
+            <Field label="Name">
               <input
                 value={form.name}
-                disabled
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-400 outline-none"
+                onChange={(e) => updateField("name", e.target.value)}
+                placeholder="Your name"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500"
               />
             </Field>
 

@@ -90,6 +90,7 @@ export async function getMe(token: string) {
 export async function updateProfile(
   token: string,
   payload: {
+    name?: string;
     city: string;
     zone: string;
     pincode?: string;

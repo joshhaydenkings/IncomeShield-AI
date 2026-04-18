@@ -62,7 +62,11 @@ def signup(payload: SignupRequest):
 @router.post("/login")
 def login(payload: LoginRequest):
     user = get_user_by_email(payload.email)
-    if not user or not verify_password(payload.password, user["passwordHash"]):
+    password_hash = None
+    if user:
+        password_hash = user.get("passwordHash") or user.get("password_hash")
+
+    if not user or not password_hash or not verify_password(payload.password, password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(str(user["_id"]))
@@ -92,6 +96,7 @@ def update_profile(
     location_changed = city_changed or zone_changed or pincode_changed
 
     profile_updates = {
+        "name": (payload.name or current_user.get("name") or "").strip(),
         "city": payload.city,
         "zone": payload.zone,
         "pincode": payload.pincode or "",

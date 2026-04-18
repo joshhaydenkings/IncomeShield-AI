@@ -186,6 +186,7 @@ function App() {
 
     try {
       const res = await updateProfile(token, {
+        name: updatedWorker.name,
         city: updatedWorker.city,
         zone: updatedWorker.zone,
         pincode: updatedWorker.pincode ?? "",

@@ -13,6 +13,7 @@ class LoginRequest(BaseModel):
 
 
 class ProfileSetupRequest(BaseModel):
+    name: str | None = None
     city: str
     zone: str
     pincode: str | None = ""
